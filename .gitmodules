@@ -1,0 +1,3 @@
+[submodule "vendor/foliate-js"]
+	path = vendor/foliate-js
+	url = git@github.com:RileyMathews/foliate-js-readest.git

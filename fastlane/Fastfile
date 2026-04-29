@@ -1,0 +1,400 @@
+# vi:ft=ruby
+require "json"
+require "open3"
+require "securerandom"
+require "shellwords"
+require "tempfile"
+
+default_platform(:android)
+
+ROOT_DIR = File.expand_path("..", __dir__)
+ANDROID_TRACKS = ["internal", "alpha", "beta", "production"].freeze
+
+def decrypt_sops(path, input_type:, output_type: input_type)
+  command = [
+    "sops",
+    "decrypt",
+    "--input-type",
+    input_type,
+    "--output-type",
+    output_type,
+    path,
+  ]
+
+  output, error, status = Open3.capture3(*command, chdir: ROOT_DIR)
+  UI.user_error!("Failed to decrypt #{path}: #{error}") unless status.success?
+  output
+end
+
+def parse_dotenv(contents)
+  contents.each_line.with_object({}) do |line, env|
+    line = line.strip
+    next if line.empty? || line.start_with?("#")
+
+    key, value = line.split("=", 2)
+    next unless key && value
+
+    value = value.strip
+    if (value.start_with?("\"") && value.end_with?("\"")) ||
+        (value.start_with?("'") && value.end_with?("'"))
+      value = value[1...-1]
+    end
+
+    env[key.strip] = value
+  end
+end
+
+def current_default_keychain
+  output, _error, status = Open3.capture3("security", "default-keychain", "-d", "user")
+  return nil unless status.success?
+
+  output.strip.sub(/\A"/, "").sub(/"\z/, "")
+rescue Errno::ENOENT
+  nil
+end
+
+def restore_default_keychain(path)
+  return if path.to_s.empty?
+
+  _output, error, status = Open3.capture3("security", "default-keychain", "-d", "user", "-s", path)
+  UI.important("Could not restore default keychain #{path}: #{error}") unless status.success?
+rescue Errno::ENOENT
+  nil
+end
+
+def with_android_release_secrets
+  keystore = Tempfile.new(["papyrd-android-upload-key", ".jks"])
+  google_key = Tempfile.new(["papyrd-google-play-service-account", ".json"])
+
+  begin
+    release_env = parse_dotenv(
+      decrypt_sops(
+        "secrets/android-release.env.enc",
+        input_type: "dotenv",
+      ),
+    )
+    release_env.each { |key, value| ENV[key] = value }
+
+    keystore.binmode
+    keystore.write(
+      decrypt_sops(
+        "secrets/android-upload-key.jks.enc",
+        input_type: "binary",
+      ),
+    )
+    keystore.flush
+
+    google_key.write(
+      decrypt_sops(
+        "secrets/google-play-service-account.json.enc",
+        input_type: "json",
+      ),
+    )
+    google_key.flush
+
+    ENV["ANDROID_KEYSTORE_PATH"] = keystore.path
+    yield(google_key.path)
+  ensure
+    keystore.close!
+    google_key.close!
+  end
+end
+
+def with_ios_release_secrets
+  certificate = Tempfile.new(["papyrd-ios-distribution-cert", ".p12"])
+  provisioning_profile = Tempfile.new(["papyrd-ios-app-store-profile", ".mobileprovision"])
+  api_key_file = Tempfile.new(["papyrd-app-store-connect-api-key", ".json"])
+  keychain_name = "papyrd-ios-release-#{SecureRandom.hex(8)}.keychain-db"
+  keychain_password = SecureRandom.hex(32)
+  keychain_created = false
+  previous_default_keychain = current_default_keychain
+
+  begin
+    release_env = parse_dotenv(
+      decrypt_sops(
+        "secrets/ios-release.env.enc",
+        input_type: "dotenv",
+      ),
+    )
+    release_env.each { |key, value| ENV[key] = value }
+
+    certificate.binmode
+    certificate.write(
+      decrypt_sops(
+        "secrets/ios-distribution-cert.p12.enc",
+        input_type: "binary",
+      ),
+    )
+    certificate.flush
+
+    provisioning_profile.binmode
+    provisioning_profile.write(
+      decrypt_sops(
+        "secrets/ios-app-store-profile.mobileprovision.enc",
+        input_type: "binary",
+      ),
+    )
+    provisioning_profile.flush
+
+    api_key_file.write(
+      decrypt_sops(
+        "secrets/app-store-connect-api-key.json.enc",
+        input_type: "json",
+      ),
+    )
+    api_key_file.flush
+
+    create_keychain(
+      name: keychain_name,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false,
+      add_to_search_list: true,
+    )
+    keychain_created = true
+
+    import_certificate(
+      certificate_path: certificate.path,
+      certificate_password: ENV.fetch("IOS_DISTRIBUTION_CERT_PASSWORD"),
+      keychain_name: keychain_name,
+      keychain_password: keychain_password,
+    )
+
+    install_provisioning_profile(path: provisioning_profile.path)
+
+    api_key_json = JSON.parse(File.read(api_key_file.path))
+    api_key = app_store_connect_api_key(
+      key_id: api_key_json.fetch("key_id"),
+      issuer_id: api_key_json.fetch("issuer_id"),
+      key_content: api_key_json.fetch("key"),
+      duration: api_key_json.fetch("duration", 1200),
+      in_house: api_key_json.fetch("in_house", false),
+    )
+
+    yield(api_key)
+  ensure
+    restore_default_keychain(previous_default_keychain) if keychain_created
+
+    begin
+      delete_keychain(name: keychain_name) if keychain_created
+    rescue StandardError => error
+      UI.important("Could not delete temporary keychain #{keychain_name}: #{error.message}")
+    end
+
+    certificate.close!
+    provisioning_profile.close!
+    api_key_file.close!
+  end
+end
+
+def expo_marketing_version
+  output, error, status = Open3.capture3(
+    "bunx",
+    "expo",
+    "config",
+    "--json",
+    chdir: ROOT_DIR,
+  )
+
+  UI.user_error!("Failed to read Expo config: #{error}") unless status.success?
+
+  JSON.parse(output).fetch("version")
+rescue JSON::ParserError => error
+  UI.user_error!("Failed to parse Expo config JSON: #{error.message}")
+end
+
+def next_ios_build_number(api_key:, version:)
+  latest_build_number = latest_testflight_build_number(
+    api_key: api_key,
+    app_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
+    version: version,
+    initial_build_number: 0,
+  )
+
+  latest_build_number.to_i + 1
+end
+
+def testflight_groups
+  groups = ENV.fetch("TESTFLIGHT_GROUPS", "")
+    .split(",")
+    .map(&:strip)
+    .reject(&:empty?)
+
+  groups.empty? ? nil : groups
+end
+
+def build_signed_ios_app(api_key:)
+  version = expo_marketing_version
+  next_build_number = next_ios_build_number(api_key: api_key, version: version)
+  ENV["IOS_BUILD_NUMBER"] = next_build_number.to_s
+
+  UI.message("Building iOS version #{version} build #{next_build_number}")
+
+  Dir.chdir(ROOT_DIR) do
+    sh("bunx expo prebuild --platform ios --clean")
+  end
+
+  update_code_signing_settings(
+    use_automatic_signing: false,
+    path: File.join(ROOT_DIR, "ios", "papyrd.xcodeproj"),
+    targets: ["papyrd"],
+    team_id: ENV.fetch("APPLE_TEAM_ID"),
+    bundle_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
+    profile_name: ENV.fetch("IOS_PROVISIONING_PROFILE_NAME"),
+    code_sign_identity: "Apple Distribution",
+    build_configurations: ["Release"],
+  )
+
+  build_app(
+    workspace: File.join(ROOT_DIR, "ios", "papyrd.xcworkspace"),
+    scheme: "papyrd",
+    configuration: "Release",
+    clean: true,
+    export_method: "app-store",
+    output_directory: File.join(ROOT_DIR, "dist-export", "ios"),
+    output_name: "Papyrd.ipa",
+    export_options: {
+      method: "app-store",
+      signingStyle: "manual",
+      teamID: ENV.fetch("APPLE_TEAM_ID"),
+      provisioningProfiles: {
+        ENV.fetch("IOS_BUNDLE_IDENTIFIER") => ENV.fetch("IOS_PROVISIONING_PROFILE_NAME"),
+      },
+    },
+    xcargs: [
+      "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')}",
+      "CODE_SIGN_STYLE=Manual",
+      "CODE_SIGN_IDENTITY=#{Shellwords.escape('Apple Distribution')}",
+      "PROVISIONING_PROFILE_SPECIFIER=#{Shellwords.escape(ENV.fetch('IOS_PROVISIONING_PROFILE_NAME'))}",
+    ].join(" "),
+  )
+end
+
+def upload_ios_build_to_testflight(api_key:, ipa:, distribute_to_groups: false)
+  options = {
+    api_key: api_key,
+    app_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
+    ipa: ipa,
+    uses_non_exempt_encryption: false,
+    skip_waiting_for_build_processing: ENV.fetch("CI", "").casecmp("true").zero?,
+  }
+
+  options[:apple_id] = ENV["ASC_APP_ID"] unless ENV.fetch("ASC_APP_ID", "").empty?
+  options[:itc_provider] = ENV["ITC_PROVIDER"] unless ENV.fetch("ITC_PROVIDER", "").empty?
+
+  groups = testflight_groups
+  if distribute_to_groups && groups && !options[:skip_waiting_for_build_processing]
+    options[:groups] = groups
+  elsif distribute_to_groups && groups
+    UI.important("Skipping TestFlight group distribution because CI build processing wait is disabled")
+  end
+
+  upload_to_testflight(**options)
+end
+
+def next_android_version_code(json_key)
+  version_codes = ANDROID_TRACKS.flat_map do |track|
+    google_play_track_version_codes(
+      json_key: json_key,
+      track: track,
+    )
+  rescue StandardError => error
+    UI.important("Could not read #{track} version codes: #{error.message}")
+    []
+  end
+
+  (version_codes.max || 0) + 1
+end
+
+def build_signed_release_bundle(track:, google_key:)
+  next_version_code = next_android_version_code(google_key)
+  ENV["ANDROID_VERSION_CODE"] = next_version_code.to_s
+
+  UI.message("Building Android versionCode #{next_version_code} for #{track}")
+
+  Dir.chdir(ROOT_DIR) do
+    sh("bunx expo prebuild --platform android --clean")
+  end
+
+  gradle(
+    project_dir: File.join(ROOT_DIR, "android"),
+    task: "bundle",
+    build_type: "Release",
+    properties: {
+      "android.injected.signing.store.file" => ENV.fetch("ANDROID_KEYSTORE_PATH"),
+      "android.injected.signing.store.password" => ENV.fetch("ANDROID_KEYSTORE_PASSWORD"),
+      "android.injected.signing.key.alias" => ENV.fetch("ANDROID_KEY_ALIAS"),
+      "android.injected.signing.key.password" => ENV.fetch("ANDROID_KEY_PASSWORD"),
+    },
+  )
+end
+
+platform :android do
+  desc "Build and upload a signed Android AAB to the Play internal track as a draft"
+  lane :internal do
+    with_android_release_secrets do |google_key|
+      build_signed_release_bundle(track: "internal", google_key: google_key)
+
+      upload_to_play_store(
+        json_key: google_key,
+        track: "internal",
+        release_status: "draft",
+        aab: File.join(ROOT_DIR, "android/app/build/outputs/bundle/release/app-release.aab"),
+      )
+    end
+  end
+
+  desc "Build and upload a signed Android AAB to the Play production track as a draft"
+  lane :production do
+    with_android_release_secrets do |google_key|
+      build_signed_release_bundle(track: "production", google_key: google_key)
+
+      upload_to_play_store(
+        json_key: google_key,
+        track: "production",
+        release_status: "draft",
+        aab: File.join(ROOT_DIR, "android/app/build/outputs/bundle/release/app-release.aab"),
+      )
+    end
+  end
+end
+
+platform :ios do
+  desc "Build a signed iOS IPA without uploading"
+  lane :build do
+    with_ios_release_secrets do |api_key|
+      build_signed_ios_app(api_key: api_key)
+    end
+  end
+
+  desc "Build and upload a signed iOS IPA to TestFlight for internal testing"
+  lane :internal do
+    with_ios_release_secrets do |api_key|
+      ipa = build_signed_ios_app(api_key: api_key)
+
+      upload_ios_build_to_testflight(
+        api_key: api_key,
+        ipa: ipa,
+      )
+    end
+  end
+
+  desc "Build and upload a signed iOS IPA to App Store Connect/TestFlight"
+  lane :production do
+    with_ios_release_secrets do |api_key|
+      ipa = build_signed_ios_app(api_key: api_key)
+
+      upload_ios_build_to_testflight(
+        api_key: api_key,
+        ipa: ipa,
+      )
+    end
+  end
+
+  desc "Submit an already uploaded iOS build for App Review"
+  lane :submit_review do
+    UI.user_error!("submit_review is deferred until App Store review metadata is configured")
+  end
+end
