@@ -26,7 +26,7 @@ export function DSButton({
       onPress={onPress}
       style={{
         backgroundColor,
-        alignSelf: "flex-start",
+        alignSelf: "stretch",
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderRadius: 4,
