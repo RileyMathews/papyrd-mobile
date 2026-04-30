@@ -88,13 +88,11 @@ export function KosyncSettingsScreen() {
 
       <DSCard>
         <View style={styles.cardContent}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchText}>
-              <DSText>Enable KOSync</DSText>
-              <DSText color={TextColor.Secondary} size={TextSize.Small}>
-                Pull on open and push progress while reading.
-              </DSText>
-            </View>
+          <View style={styles.switchGroup}>
+            <DSText>Enable KOSync</DSText>
+            <DSText color={TextColor.Secondary} size={TextSize.Small}>
+              Pull on open and push progress while reading.
+            </DSText>
             <Switch
               value={settings.enabled}
               onValueChange={(enabled) => setSettings({ ...settings, enabled })}
@@ -137,18 +135,16 @@ export function KosyncSettingsScreen() {
 
           {message ? <DSText>{message}</DSText> : null}
 
-          <View style={styles.actions}>
-            <DSButton
-              disabled={isSaving}
-              onPress={() => void save(false)}
-              backgroundColor={ButtonBackgroundColor.Secondary}
-            >
-              <DSText>{isSaving ? "Saving..." : "Save KOSync"}</DSText>
-            </DSButton>
-            <DSButton disabled={isSaving} onPress={() => void save(true)}>
-              <DSText>{isSaving ? "Testing..." : "Save and test"}</DSText>
-            </DSButton>
-          </View>
+          <DSButton
+            disabled={isSaving}
+            onPress={() => void save(false)}
+            backgroundColor={ButtonBackgroundColor.Secondary}
+          >
+            <DSText>{isSaving ? "Saving..." : "Save KOSync"}</DSText>
+          </DSButton>
+          <DSButton disabled={isSaving} onPress={() => void save(true)}>
+            <DSText>{isSaving ? "Testing..." : "Save and test"}</DSText>
+          </DSButton>
         </View>
       </DSCard>
     </ScrollView>
@@ -167,17 +163,9 @@ function StateScreen({ title, message }: { title: string; message: string }) {
 const styles = StyleSheet.create({
   screen: { backgroundColor: "#020617", flex: 1 },
   content: { gap: 18, padding: 20, paddingTop: 28 },
-  cardContent: { flex: 1, gap: 16 },
-  switchRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 16,
-    justifyContent: "space-between",
-  },
-  switchText: { flex: 1, gap: 3 },
-  actions: { flexDirection: "row", gap: 10 },
+  cardContent: { gap: 16 },
+  switchGroup: { gap: 6 },
   stateScreen: {
-    alignItems: "center",
     backgroundColor: "#020617",
     flex: 1,
     gap: 10,

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Text } from "react-native";
 
 export enum TextColor {
@@ -21,5 +21,9 @@ type TextProps = {
 };
 
 export function DSText({ children, color = TextColor.Primary, size = TextSize.Medium }: TextProps) {
-  return <Text style={{ color, fontSize: size }}>{children}</Text>;
+  return (
+    <Text style={{ color, fontSize: size }}>
+      {children}
+    </Text>
+  );
 }

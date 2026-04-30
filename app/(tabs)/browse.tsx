@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 
+import { DSButton } from "@/components/ds/button";
+import { DSCard } from "@/components/ds/card";
+import { DSText, TextColor, TextSize } from "@/components/ds/text";
 import { getAppSettings, type OpdsServerSettings } from "@/lib/settings";
 
 export default function BrowseRoute() {
@@ -46,11 +49,10 @@ export default function BrowseRoute() {
       }
     >
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Browse</Text>
-        <Text style={styles.title}>OPDS catalogs</Text>
-        <Text style={styles.subtitle}>
+        <DSText size={TextSize.XLarge}>OPDS catalogs</DSText>
+        <DSText color={TextColor.Secondary}>
           Choose a configured server to browse. Add more from Settings.
-        </Text>
+        </DSText>
       </View>
 
       {servers.map((server) => (
@@ -66,18 +68,17 @@ export default function BrowseRoute() {
               },
             });
           }}
-          style={({ pressed }) => [styles.card, pressed ? styles.cardPressed : null]}
+          style={({ pressed }) => (pressed ? styles.pressed : null)}
         >
-          <View style={styles.cardText}>
-            <Text style={styles.cardTitle}>{server.name}</Text>
-            <Text style={styles.cardMeta} numberOfLines={1}>
-              {server.baseUrl}
-            </Text>
-            {server.username ? (
-              <Text style={styles.cardMeta}>Signed in as {server.username}</Text>
-            ) : null}
-          </View>
-          <Text style={styles.chevron}>›</Text>
+          <DSCard>
+            <View style={styles.cardText}>
+              <DSText>{server.name}</DSText>
+              <DSText color={TextColor.Secondary}>{server.baseUrl}</DSText>
+              {server.username ? (
+                <DSText color={TextColor.Secondary}>Signed in as {server.username}</DSText>
+              ) : null}
+            </View>
+          </DSCard>
         </Pressable>
       ))}
 
@@ -95,8 +96,8 @@ export default function BrowseRoute() {
 function StateScreen({ title, message }: { title: string; message: string }) {
   return (
     <View style={styles.stateScreen}>
-      <Text style={styles.stateTitle}>{title}</Text>
-      <Text style={styles.stateMessage}>{message}</Text>
+      <DSText size={TextSize.XLarge}>{title}</DSText>
+      <DSText color={TextColor.Secondary}>{message}</DSText>
     </View>
   );
 }
@@ -112,11 +113,11 @@ function StateCard({
 }) {
   return (
     <View style={styles.stateCard}>
-      <Text style={styles.stateMessage}>{message}</Text>
+      <DSText color={TextColor.Secondary}>{message}</DSText>
       {actionLabel && onPress ? (
-        <Pressable onPress={onPress} style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>{actionLabel}</Text>
-        </Pressable>
+        <DSButton onPress={onPress}>
+          <DSText>{actionLabel}</DSText>
+        </DSButton>
       ) : null}
     </View>
   );
@@ -126,41 +127,15 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: "#0f172a", flex: 1 },
   content: { gap: 16, padding: 20, paddingTop: 28 },
   header: { gap: 6, marginBottom: 8 },
-  eyebrow: {
-    color: "#93c5fd",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  title: { color: "#f8fafc", fontSize: 32, fontWeight: "700" },
-  subtitle: { color: "#94a3b8", fontSize: 15, lineHeight: 23 },
-  card: {
-    alignItems: "center",
-    backgroundColor: "#111827",
-    borderColor: "#1f2937",
-    borderRadius: 20,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-    padding: 16,
-  },
-  cardPressed: { opacity: 0.85 },
-  cardText: { flex: 1, gap: 5 },
-  cardTitle: { color: "#f8fafc", fontSize: 18, fontWeight: "700" },
-  cardMeta: { color: "#94a3b8", fontSize: 14 },
-  chevron: { color: "#60a5fa", fontSize: 28, lineHeight: 28 },
+  pressed: { opacity: 0.85 },
+  cardText: { gap: 5 },
   stateScreen: {
-    alignItems: "center",
     backgroundColor: "#0f172a",
     flex: 1,
     gap: 12,
     justifyContent: "center",
     padding: 24,
   },
-  stateTitle: { color: "#f8fafc", fontSize: 26, fontWeight: "700", textAlign: "center" },
-  stateMessage: { color: "#94a3b8", fontSize: 15, lineHeight: 22, textAlign: "center" },
   stateCard: {
     backgroundColor: "#111827",
     borderColor: "#1f2937",
@@ -169,13 +144,4 @@ const styles = StyleSheet.create({
     gap: 14,
     padding: 20,
   },
-  primaryButton: {
-    alignItems: "center",
-    alignSelf: "center",
-    backgroundColor: "#2563eb",
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  primaryButtonText: { color: "#eff6ff", fontSize: 15, fontWeight: "700" },
 });

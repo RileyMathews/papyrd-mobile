@@ -15,7 +15,6 @@ const styles = StyleSheet.create({
     borderColor: "#1f2937",
     borderRadius: 8,
     borderWidth: 1,
-    flexDirection: "row",
     gap: 12,
     padding: 12,
   },

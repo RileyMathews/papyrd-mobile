@@ -211,17 +211,10 @@ function StateScreen({ title, message }: { title: string; message: string }) {
 const styles = StyleSheet.create({
   screen: { backgroundColor: "#020617", flex: 1 },
   content: { gap: 18, padding: 20, paddingTop: 28 },
-  header: { gap: 6 },
-  cardContent: { flex: 1, gap: 16 },
-  cardHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  emptyCardContent: { alignItems: "center", flex: 1, gap: 8 },
+  cardContent: { gap: 16 },
+  cardHeader: { gap: 12 },
+  emptyCardContent: { gap: 8 },
   stateScreen: {
-    alignItems: "center",
     backgroundColor: "#020617",
     flex: 1,
     gap: 10,

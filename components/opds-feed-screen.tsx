@@ -150,7 +150,6 @@ function LinkRow({ link, server }: { link: OpdsLink; server: OpdsServerSettings 
             Feed
           </DSText>
         </View>
-        <DSText size={TextSize.XLarge}>›</DSText>
       </DSCard>
     </Pressable>
   );
@@ -295,7 +294,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowTextWrap: {
-    flex: 1,
     gap: 4,
   },
   pressed: {
@@ -315,12 +313,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardContent: {
-    flex: 1,
     gap: 6,
     justifyContent: "center",
   },
   stateScreen: {
-    alignItems: "center",
     backgroundColor: "#020617",
     flex: 1,
     gap: 12,

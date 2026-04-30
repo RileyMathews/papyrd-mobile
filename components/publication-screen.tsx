@@ -325,14 +325,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionContent: {
-    flex: 1,
     gap: 12,
   },
   buttonContent: {
     gap: 4,
   },
   stateScreen: {
-    alignItems: "center",
     backgroundColor: "#020617",
     flex: 1,
     gap: 12,

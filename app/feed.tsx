@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
 import { OpdsFeedScreen } from "@/components/opds-feed-screen";
+import { DSText, TextColor } from "@/components/ds/text";
 import { getAppSettings, type OpdsServerSettings } from "@/lib/settings";
 
 export default function FeedRoute() {
@@ -54,14 +55,13 @@ function StateScreen({ message }: { message: string }) {
   return (
     <View
       style={{
-        alignItems: "center",
         backgroundColor: "#0f172a",
         flex: 1,
         justifyContent: "center",
         padding: 24,
       }}
     >
-      <Text style={{ color: "#94a3b8", fontSize: 15, textAlign: "center" }}>{message}</Text>
+      <DSText color={TextColor.Secondary}>{message}</DSText>
     </View>
   );
 }

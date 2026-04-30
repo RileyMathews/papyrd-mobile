@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 
@@ -80,7 +80,9 @@ export function LibraryScreen() {
             <Image source={{ uri: book.coverUri }} style={styles.cover} contentFit="cover" />
           ) : (
             <View style={[styles.cover, styles.coverPlaceholder]}>
-              <Text style={styles.coverPlaceholderText}>No cover</Text>
+              <DSText color={TextColor.Secondary} size={TextSize.Small}>
+                No cover
+              </DSText>
             </View>
           )}
 
@@ -92,27 +94,25 @@ export function LibraryScreen() {
             {book.sourceServer ? (
               <DSText color={TextColor.Secondary}>From {book.sourceServer.name}</DSText>
             ) : null}
-            <View style={styles.actions}>
-              <DSButton
-                onPress={() => {
-                  router.push({
-                    pathname: "/reader-foliate" as never,
-                    params: {
-                      bookId: book.id,
-                      title: book.title,
-                    } as never,
-                  });
-                }}
-              >
-                <DSText>Read</DSText>
-              </DSButton>
-              <DSButton
-                onPress={() => confirmDelete(book)}
-                backgroundColor={ButtonBackgroundColor.Danger}
-              >
-                <DSText>{deletingBookId === book.id ? "Deleting..." : "Delete local copy"}</DSText>
-              </DSButton>
-            </View>
+            <DSButton
+              onPress={() => {
+                router.push({
+                  pathname: "/reader-foliate" as never,
+                  params: {
+                    bookId: book.id,
+                    title: book.title,
+                  } as never,
+                });
+              }}
+            >
+              <DSText>Read</DSText>
+            </DSButton>
+            <DSButton
+              onPress={() => confirmDelete(book)}
+              backgroundColor={ButtonBackgroundColor.Danger}
+            >
+              <DSText>{deletingBookId === book.id ? "Deleting..." : "Delete local copy"}</DSText>
+            </DSButton>
           </View>
         </DSCard>
       ))}
@@ -123,8 +123,8 @@ export function LibraryScreen() {
 function StateScreen({ title, message }: { title: string; message: string }) {
   return (
     <View style={styles.stateScreen}>
-      <Text style={styles.stateTitle}>{title}</Text>
-      <Text style={styles.stateMessage}>{message}</Text>
+      <DSText size={TextSize.XLarge}>{title}</DSText>
+      <DSText color={TextColor.Secondary}>{message}</DSText>
     </View>
   );
 }
@@ -149,40 +149,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  coverPlaceholderText: {
-    color: "#94a3b8",
-    fontSize: 12,
-    textAlign: "center",
-  },
   cardContent: {
-    flex: 1,
     gap: 6,
     justifyContent: "center",
   },
-  actions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 6,
-  },
   stateScreen: {
-    alignItems: "center",
     backgroundColor: "#020617",
     flex: 1,
     gap: 12,
     justifyContent: "center",
     padding: 24,
-  },
-  stateTitle: {
-    color: "#f8fafc",
-    fontSize: 26,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  stateMessage: {
-    color: "#94a3b8",
-    fontSize: 15,
-    lineHeight: 24,
-    textAlign: "center",
   },
 });

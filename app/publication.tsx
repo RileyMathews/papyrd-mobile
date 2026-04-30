@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
+import { DSText, TextColor } from "@/components/ds/text";
 import { PublicationScreen } from "@/components/publication-screen";
 import { getAppSettings, type OpdsServerSettings } from "@/lib/settings";
 
@@ -58,14 +59,13 @@ function StateScreen({ message }: { message: string }) {
   return (
     <View
       style={{
-        alignItems: "center",
         backgroundColor: "#020617",
         flex: 1,
         justifyContent: "center",
         padding: 24,
       }}
     >
-      <Text style={{ color: "#94a3b8", fontSize: 15, textAlign: "center" }}>{message}</Text>
+      <DSText color={TextColor.Secondary}>{message}</DSText>
     </View>
   );
 }
