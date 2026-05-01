@@ -56,7 +56,7 @@ jobs:
 
   ios-internal:
     name: iOS Internal
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,6 +81,11 @@ jobs:
           curl -fsSL -o sops "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.darwin.amd64"
           chmod +x sops
           sudo mv sops /usr/local/bin/sops
+
+      - name: Verify Xcode SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Deploy iOS internal release
         run: bundle exec fastlane ios internal
