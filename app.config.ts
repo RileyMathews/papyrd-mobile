@@ -4,6 +4,7 @@ const androidVersionCode = process.env.ANDROID_VERSION_CODE
   ? Number(process.env.ANDROID_VERSION_CODE)
   : undefined;
 const iosBuildNumber = process.env.IOS_BUILD_NUMBER;
+const appVersion = process.env.APP_VERSION || "0.0.1";
 
 if (androidVersionCode !== undefined && !Number.isInteger(androidVersionCode)) {
   throw new Error("ANDROID_VERSION_CODE must be an integer");
@@ -16,7 +17,7 @@ if (iosBuildNumber !== undefined && !/^\d+$/.test(iosBuildNumber)) {
 const config: ExpoConfig = {
   name: "papyrd",
   slug: "papyrd",
-  version: "0.0.1",
+  version: appVersion,
   orientation: "portrait",
   icon: "./assets/icon.png",
   scheme: "papyrd",
