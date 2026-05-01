@@ -44,9 +44,11 @@ jobs:
           bundler-cache: true
 
       - name: Install SOPS
-        uses: getsops/sops-action@v1
-        with:
-          version: 3.12.2
+        run: |
+          SOPS_VERSION=3.12.2
+          curl -fsSL -o sops "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+          chmod +x sops
+          sudo mv sops /usr/local/bin/sops
 
       - name: Deploy Android internal release
         run: bundle exec fastlane android internal
@@ -72,9 +74,11 @@ jobs:
           bundler-cache: true
 
       - name: Install SOPS
-        uses: getsops/sops-action@v1
-        with:
-          version: 3.12.2
+        run: |
+          SOPS_VERSION=3.12.2
+          curl -fsSL -o sops "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.darwin.amd64"
+          chmod +x sops
+          sudo mv sops /usr/local/bin/sops
 
       - name: Deploy iOS internal release
         run: bundle exec fastlane ios internal
