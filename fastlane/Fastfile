@@ -332,7 +332,7 @@ def build_signed_release_bundle(track:, google_key:)
 end
 
 platform :android do
-  desc "Build and upload a signed Android AAB to the Play internal track as a draft"
+  desc "Build and publish a signed Android AAB to the Play internal track"
   lane :internal do
     with_android_release_secrets do |google_key|
       build_signed_release_bundle(track: "internal", google_key: google_key)
@@ -340,7 +340,7 @@ platform :android do
       upload_to_play_store(
         json_key: google_key,
         track: "internal",
-        release_status: "draft",
+        release_status: "completed",
         aab: File.join(ROOT_DIR, "android/app/build/outputs/bundle/release/app-release.aab"),
       )
     end

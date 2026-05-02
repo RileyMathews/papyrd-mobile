@@ -21,7 +21,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 [bundle exec] fastlane android internal
 ```
 
-Build and upload a signed Android AAB to the Play internal track as a draft
+Build and publish a signed Android AAB to the Play internal track
 
 ### android production
 
