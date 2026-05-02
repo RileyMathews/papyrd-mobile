@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import FoliateReaderDom, { type FoliateReaderProgress } from "@/components/readers/foliate/dom";
+import { SimpleScreen } from "@/components/simple-screen";
 import { KosyncClient } from "@/lib/kosync";
 import {
   getLocalBook,
@@ -239,7 +240,7 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
 
   if (!isNativeDownloadSupported()) {
     return (
-      <StateScreen
+      <SimpleScreen
         title="Reader unavailable"
         message="The foliate reader is only available on iOS and Android right now."
       />
@@ -257,7 +258,7 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
 
   if (errorMessage || !book) {
     return (
-      <StateScreen
+      <SimpleScreen
         title="Reader unavailable"
         message={errorMessage ?? "This local book could not be opened."}
       />
@@ -325,15 +326,6 @@ async function getRemoteProgress(
   }
 }
 
-function StateScreen({ title, message }: { title: string; message: string }) {
-  return (
-    <View style={styles.stateScreen}>
-      <Text style={styles.stateTitle}>{title}</Text>
-      <Text style={styles.stateMessage}>{message}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: "#020617",
@@ -354,25 +346,5 @@ const styles = StyleSheet.create({
   loadingText: {
     color: "#cbd5e1",
     fontSize: 15,
-  },
-  stateScreen: {
-    alignItems: "center",
-    backgroundColor: "#020617",
-    flex: 1,
-    gap: 12,
-    justifyContent: "center",
-    padding: 24,
-  },
-  stateTitle: {
-    color: "#f8fafc",
-    fontSize: 26,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  stateMessage: {
-    color: "#94a3b8",
-    fontSize: 15,
-    lineHeight: 24,
-    textAlign: "center",
   },
 });

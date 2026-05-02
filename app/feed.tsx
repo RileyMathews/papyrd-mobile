@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { View } from "react-native";
 
 import { OpdsFeedScreen } from "@/components/opds-feed-screen";
-import { DSText, TextColor } from "@/components/ds/text";
+import { SimpleScreen } from "@/components/simple-screen";
 import { getAppSettings, type OpdsServerSettings } from "@/lib/settings";
 
 export default function FeedRoute() {
@@ -36,11 +35,11 @@ export default function FeedRoute() {
   }, [params.serverId]);
 
   if (error) {
-    return <StateScreen message={error} />;
+    return <SimpleScreen message={error} />;
   }
 
   if (!server) {
-    return <StateScreen message="Loading OPDS server settings." />;
+    return <SimpleScreen message="Loading OPDS server settings." />;
   }
 
   return (
@@ -48,20 +47,5 @@ export default function FeedRoute() {
       <Stack.Screen options={{ title: params.title ?? server.name }} />
       <OpdsFeedScreen href={params.href ?? server.baseUrl} server={server} />
     </>
-  );
-}
-
-function StateScreen({ message }: { message: string }) {
-  return (
-    <View
-      style={{
-        backgroundColor: "#0f172a",
-        flex: 1,
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <DSText color={TextColor.Secondary}>{message}</DSText>
-    </View>
   );
 }

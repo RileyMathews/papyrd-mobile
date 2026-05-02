@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Switch } from "react-native";
 
 import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
 import { DSCard } from "@/components/ds/card";
 import { DSField } from "@/components/ds/field";
+import { DSScreen } from "@/components/ds/screen";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
+import { SimpleScreen } from "@/components/simple-screen";
 import { KosyncClient } from "@/lib/kosync";
 import {
   getAppSettings,
@@ -72,104 +74,73 @@ export function KosyncSettingsScreen() {
   }
 
   if (!settings) {
-    return <StateScreen title="Loading settings" message="Reading KOSync configuration." />;
+    return <SimpleScreen title="Loading settings" message="Reading KOSync configuration." />;
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <DSScreen keyboardShouldPersistTaps="handled">
       <DSText size={TextSize.XLarge}>KOSync settings</DSText>
       <DSText color={TextColor.Secondary}>
         Synchronize reading progress with a KOReader-compatible sync server.
       </DSText>
 
       <DSCard>
-        <View style={styles.cardContent}>
-          <View style={styles.switchGroup}>
-            <DSText>Enable KOSync</DSText>
-            <DSText color={TextColor.Secondary} size={TextSize.Small}>
-              Pull on open and push progress while reading.
-            </DSText>
-            <Switch
-              value={settings.enabled}
-              onValueChange={(enabled) => setSettings({ ...settings, enabled })}
-              trackColor={{ false: "#334155", true: "#2563eb" }}
-              thumbColor="#f8fafc"
-            />
-          </View>
+        <DSText>Enable KOSync</DSText>
+        <DSText color={TextColor.Secondary} size={TextSize.Small}>
+          Pull on open and push progress while reading.
+        </DSText>
+        <Switch
+          value={settings.enabled}
+          onValueChange={(enabled) => setSettings({ ...settings, enabled })}
+          trackColor={{ false: "#334155", true: "#2563eb" }}
+          thumbColor="#f8fafc"
+        />
 
-          <DSField
-            label="Server URL"
-            value={settings.serverUrl}
-            onChangeText={(serverUrl) => setSettings({ ...settings, serverUrl })}
-            placeholder="https://sync.koreader.rocks"
-          />
-          <DSField
-            autoCapitalize="none"
-            label="Username"
-            value={settings.username}
-            onChangeText={(username) => setSettings({ ...settings, username })}
-            placeholder="username"
-          />
-          <DSField
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder={settings.userkey ? "Saved; enter to replace" : "Required"}
-            secureTextEntry
-          />
-          <DSField
-            label="Device name"
-            value={settings.deviceName}
-            onChangeText={(deviceName) => setSettings({ ...settings, deviceName })}
-            placeholder="Papyrd"
-          />
+        <DSField
+          label="Server URL"
+          value={settings.serverUrl}
+          onChangeText={(serverUrl) => setSettings({ ...settings, serverUrl })}
+          placeholder="https://sync.koreader.rocks"
+        />
+        <DSField
+          autoCapitalize="none"
+          label="Username"
+          value={settings.username}
+          onChangeText={(username) => setSettings({ ...settings, username })}
+          placeholder="username"
+        />
+        <DSField
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          placeholder={settings.userkey ? "Saved; enter to replace" : "Required"}
+          secureTextEntry
+        />
+        <DSField
+          label="Device name"
+          value={settings.deviceName}
+          onChangeText={(deviceName) => setSettings({ ...settings, deviceName })}
+          placeholder="Papyrd"
+        />
 
-          <DSText color={TextColor.Secondary} size={TextSize.Small}>
-            When a book opens, Papyrd uses server progress if it differs from the saved local
-            position. Local movement is pushed back while reading.
-          </DSText>
+        <DSText color={TextColor.Secondary} size={TextSize.Small}>
+          When a book opens, Papyrd uses server progress if it differs from the saved local
+          position. Local movement is pushed back while reading.
+        </DSText>
 
-          {message ? <DSText>{message}</DSText> : null}
+        {message ? <DSText>{message}</DSText> : null}
 
-          <DSButton
-            disabled={isSaving}
-            onPress={() => void save(false)}
-            backgroundColor={ButtonBackgroundColor.Secondary}
-          >
-            <DSText>{isSaving ? "Saving..." : "Save KOSync"}</DSText>
-          </DSButton>
-          <DSButton disabled={isSaving} onPress={() => void save(true)}>
-            <DSText>{isSaving ? "Testing..." : "Save and test"}</DSText>
-          </DSButton>
-        </View>
+        <DSButton
+          disabled={isSaving}
+          onPress={() => void save(false)}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+        >
+          <DSText>{isSaving ? "Saving..." : "Save KOSync"}</DSText>
+        </DSButton>
+        <DSButton disabled={isSaving} onPress={() => void save(true)}>
+          <DSText>{isSaving ? "Testing..." : "Save and test"}</DSText>
+        </DSButton>
       </DSCard>
-    </ScrollView>
+    </DSScreen>
   );
 }
-
-function StateScreen({ title, message }: { title: string; message: string }) {
-  return (
-    <View style={styles.stateScreen}>
-      <DSText size={TextSize.XLarge}>{title}</DSText>
-      <DSText color={TextColor.Secondary}>{message}</DSText>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { backgroundColor: "#020617", flex: 1 },
-  content: { gap: 18, padding: 20, paddingTop: 28 },
-  cardContent: { gap: 16 },
-  switchGroup: { gap: 6 },
-  stateScreen: {
-    backgroundColor: "#020617",
-    flex: 1,
-    gap: 10,
-    justifyContent: "center",
-    padding: 24,
-  },
-});

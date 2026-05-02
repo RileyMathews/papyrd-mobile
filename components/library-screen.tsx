@@ -1,16 +1,17 @@
-import { useState } from "react";
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { Image } from "expo-image";
+import { useRef, useState } from "react";
+import { Alert, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
+import { Image } from "expo-image";
+import { MenuView } from "@react-native-menu/menu";
 
 import { useLocalLibrary } from "@/hooks/use-local-library";
 import { deleteLocalBook, isNativeDownloadSupported, type LocalBook } from "@/lib/library";
-import { ButtonBackgroundColor, DSButton } from "./ds/button";
-import { DSCard } from "./ds/card";
-import { DSText, TextColor, TextSize } from "./ds/text";
+import { DSScreen } from "./ds/screen";
+import { SimpleScreen } from "./simple-screen";
 
 export function LibraryScreen() {
   const { books, error, isLoading, refresh } = useLocalLibrary();
+  const didOpenMenuRef = useRef(false);
   const [deletingBookId, setDeletingBookId] = useState<string | null>(null);
 
   function confirmDelete(book: LocalBook) {
@@ -40,9 +41,19 @@ export function LibraryScreen() {
     }
   }
 
+  function openBook(book: LocalBook) {
+    router.push({
+      pathname: "/reader-foliate" as never,
+      params: {
+        bookId: book.id,
+        title: book.title,
+      } as never,
+    });
+  }
+
   if (!isNativeDownloadSupported()) {
     return (
-      <StateScreen
+      <SimpleScreen
         title="Library unavailable"
         message="Local downloads are only supported on iOS and Android right now."
       />
@@ -50,16 +61,16 @@ export function LibraryScreen() {
   }
 
   if (isLoading && books.length === 0) {
-    return <StateScreen title="Loading library" message="Checking downloaded books." />;
+    return <SimpleScreen title="Loading library" message="Checking downloaded books." />;
   }
 
   if (error && books.length === 0) {
-    return <StateScreen title="Couldn’t load library" message={error.message} />;
+    return <SimpleScreen title="Couldn’t load library" message={error.message} />;
   }
 
   if (books.length === 0) {
     return (
-      <StateScreen
+      <SimpleScreen
         title="Your library is empty"
         message="Download a book from the Browse tab and it will appear here."
       />
@@ -67,97 +78,99 @@ export function LibraryScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
+    <DSScreen
+      contentContainerStyle={styles.shelf}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refresh()} />}
     >
-      <DSText size={TextSize.XLarge}>Downloaded books</DSText>
-
       {books.map((book) => (
-        <DSCard key={book.id}>
-          {book.coverUri ? (
-            <Image source={{ uri: book.coverUri }} style={styles.cover} contentFit="cover" />
-          ) : (
-            <View style={[styles.cover, styles.coverPlaceholder]}>
-              <DSText color={TextColor.Secondary} size={TextSize.Small}>
-                No cover
-              </DSText>
+        <MenuView
+          key={book.id}
+          title={book.title}
+          shouldOpenOnLongPress
+          actions={[
+            {
+              id: "delete",
+              title: deletingBookId === book.id ? "Deleting..." : "Delete local copy",
+              attributes: {
+                destructive: true,
+                disabled: deletingBookId === book.id,
+              },
+            },
+          ]}
+          onPressAction={({ nativeEvent }) => {
+            if (nativeEvent.event === "delete") {
+              confirmDelete(book);
+            }
+          }}
+          onOpenMenu={() => {
+            didOpenMenuRef.current = true;
+          }}
+        >
+          <Pressable
+            accessibilityHint="Long press for book actions."
+            accessibilityLabel={`Read ${book.title}`}
+            accessibilityRole="button"
+            disabled={deletingBookId === book.id}
+            onPress={() => {
+              if (didOpenMenuRef.current) {
+                didOpenMenuRef.current = false;
+                return;
+              }
+
+              openBook(book);
+            }}
+            style={({ pressed }) => [styles.bookButton, pressed && styles.bookButtonPressed]}
+          >
+            <View style={styles.coverShadow}>
+              {book.coverUri ? (
+                <Image source={{ uri: book.coverUri }} style={styles.cover} contentFit="cover" />
+              ) : (
+                <View style={[styles.cover, styles.coverPlaceholder]} />
+              )}
             </View>
-          )}
-
-          <View style={styles.cardContent}>
-            <DSText color={TextColor.Primary}>{book.title}</DSText>
-            {book.authors.length > 0 ? (
-              <DSText color={TextColor.Secondary}>{book.authors.join(", ")}</DSText>
-            ) : null}
-            {book.sourceServer ? (
-              <DSText color={TextColor.Secondary}>From {book.sourceServer.name}</DSText>
-            ) : null}
-            <DSButton
-              onPress={() => {
-                router.push({
-                  pathname: "/reader-foliate" as never,
-                  params: {
-                    bookId: book.id,
-                    title: book.title,
-                  } as never,
-                });
-              }}
-            >
-              <DSText>Read</DSText>
-            </DSButton>
-            <DSButton
-              onPress={() => confirmDelete(book)}
-              backgroundColor={ButtonBackgroundColor.Danger}
-            >
-              <DSText>{deletingBookId === book.id ? "Deleting..." : "Delete local copy"}</DSText>
-            </DSButton>
-          </View>
-        </DSCard>
+          </Pressable>
+        </MenuView>
       ))}
-    </ScrollView>
-  );
-}
-
-function StateScreen({ title, message }: { title: string; message: string }) {
-  return (
-    <View style={styles.stateScreen}>
-      <DSText size={TextSize.XLarge}>{title}</DSText>
-      <DSText color={TextColor.Secondary}>{message}</DSText>
-    </View>
+    </DSScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#020617",
+  shelf: {
+    alignContent: "flex-start",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 18,
+    paddingBottom: 32,
   },
-  content: {
-    gap: 16,
-    padding: 20,
-    paddingTop: 28,
+  bookButton: {
+    alignItems: "center",
+    opacity: 1,
+    width: 100,
+  },
+  bookButtonPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.98 }],
+  },
+  coverShadow: {
+    backgroundColor: "#020617",
+    borderRadius: 8,
+    elevation: 5,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
   },
   cover: {
     backgroundColor: "#1e293b",
-    borderRadius: 12,
-    height: 108,
-    width: 76,
+    borderColor: "#334155",
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 150,
+    width: 100,
   },
   coverPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardContent: {
-    gap: 6,
-    justifyContent: "center",
-  },
-  stateScreen: {
-    backgroundColor: "#020617",
-    flex: 1,
-    gap: 12,
-    justifyContent: "center",
-    padding: 24,
+    backgroundColor: "#172554",
+    borderColor: "#1e40af",
   },
 });

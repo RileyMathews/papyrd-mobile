@@ -75,11 +75,33 @@ export async function findLocalBookForPublication(
   const bookDirectory = getBookDirectory(getPublicationId(publication, server));
   const metadataFile = new File(bookDirectory, METADATA_FILE_NAME);
 
-  if (!metadataFile.exists) {
+  if (metadataFile.exists) {
+    const book = await readMetadataFile(metadataFile, bookDirectory);
+
+    if (book) {
+      return book;
+    }
+  }
+
+  const selfLink = getPublicationSelfLink(publication);
+  const publicationHref = selfLink ? resolveOpdsUrl(selfLink.href, server) : null;
+  const acquisitionHrefs = getPublicationAcquisitionLinks(publication).map((link) =>
+    resolveOpdsUrl(link.href, server),
+  );
+
+  if (!publicationHref && acquisitionHrefs.length === 0) {
     return null;
   }
 
-  return readMetadataFile(metadataFile, bookDirectory);
+  const books = await listLocalBooks();
+
+  return (
+    books.find(
+      (book) =>
+        (publicationHref ? book.publicationHref === publicationHref : false) ||
+        acquisitionHrefs.includes(book.acquisitionHref),
+    ) ?? null
+  );
 }
 
 export async function getLocalBook(bookId: string) {

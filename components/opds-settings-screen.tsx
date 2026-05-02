@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
 
 import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
 import { DSCard } from "@/components/ds/card";
 import { DSField } from "@/components/ds/field";
+import { DSScreen } from "@/components/ds/screen";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
+import { SimpleScreen } from "@/components/simple-screen";
 import {
   createOpdsServerSettings,
   getAppSettings,
@@ -72,16 +73,12 @@ export function OpdsSettingsScreen() {
 
   if (isLoading) {
     return (
-      <StateScreen title="Loading OPDS settings" message="Reading configured catalog servers." />
+      <SimpleScreen title="Loading OPDS settings" message="Reading configured catalog servers." />
     );
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <DSScreen keyboardShouldPersistTaps="handled">
       {message ? <DSText>{message}</DSText> : null}
 
       {servers.map((server, index) => (
@@ -96,19 +93,17 @@ export function OpdsSettingsScreen() {
 
       {servers.length === 0 ? (
         <DSCard>
-          <View style={styles.emptyCardContent}>
-            <DSText size={TextSize.Large}>No OPDS servers yet</DSText>
-            <DSText color={TextColor.Secondary} size={TextSize.Small}>
-              Add a catalog before using the Browse tab.
-            </DSText>
-          </View>
+          <DSText size={TextSize.Large}>No OPDS servers yet</DSText>
+          <DSText color={TextColor.Secondary} size={TextSize.Small}>
+            Add a catalog before using the Browse tab.
+          </DSText>
         </DSCard>
       ) : null}
 
       <DSButton onPress={addServer} backgroundColor={ButtonBackgroundColor.Secondary}>
         <DSText>Add OPDS server</DSText>
       </DSButton>
-    </ScrollView>
+    </DSScreen>
   );
 }
 
@@ -151,74 +146,46 @@ function OpdsServerCard({
 
   return (
     <DSCard>
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <DSText size={TextSize.Large}>{title}</DSText>
-          <DSButton
-            disabled={isRemoving}
-            onPress={() => void handleRemove()}
-            backgroundColor={ButtonBackgroundColor.Danger}
-          >
-            <DSText size={TextSize.Small}>{isRemoving ? "Removing..." : "Remove"}</DSText>
-          </DSButton>
-        </View>
+      <DSText size={TextSize.Large}>{title}</DSText>
+      <DSButton
+        disabled={isRemoving}
+        onPress={() => void handleRemove()}
+        backgroundColor={ButtonBackgroundColor.Danger}
+      >
+        <DSText size={TextSize.Small}>{isRemoving ? "Removing..." : "Remove"}</DSText>
+      </DSButton>
 
-        <DSField
-          label="Display name"
-          value={draft.name}
-          onChangeText={(name) => setDraft({ ...draft, name })}
-          placeholder="My books"
-        />
-        <DSField
-          autoCapitalize="none"
-          label="OPDS URL"
-          value={draft.baseUrl}
-          onChangeText={(baseUrl) => setDraft({ ...draft, baseUrl })}
-          placeholder="https://example.com/opds"
-        />
-        <DSField
-          autoCapitalize="none"
-          label="Username"
-          value={draft.username}
-          onChangeText={(username) => setDraft({ ...draft, username })}
-          placeholder="Optional"
-        />
-        <DSField
-          label="Password"
-          value={draft.password}
-          onChangeText={(password) => setDraft({ ...draft, password })}
-          placeholder="Optional"
-          secureTextEntry
-        />
+      <DSField
+        label="Display name"
+        value={draft.name}
+        onChangeText={(name) => setDraft({ ...draft, name })}
+        placeholder="My books"
+      />
+      <DSField
+        autoCapitalize="none"
+        label="OPDS URL"
+        value={draft.baseUrl}
+        onChangeText={(baseUrl) => setDraft({ ...draft, baseUrl })}
+        placeholder="https://example.com/opds"
+      />
+      <DSField
+        autoCapitalize="none"
+        label="Username"
+        value={draft.username}
+        onChangeText={(username) => setDraft({ ...draft, username })}
+        placeholder="Optional"
+      />
+      <DSField
+        label="Password"
+        value={draft.password}
+        onChangeText={(password) => setDraft({ ...draft, password })}
+        placeholder="Optional"
+        secureTextEntry
+      />
 
-        <DSButton disabled={isSaving || isRemoving} onPress={() => void handleSave()}>
-          <DSText>{isSaving ? "Saving..." : "Save this server"}</DSText>
-        </DSButton>
-      </View>
+      <DSButton disabled={isSaving || isRemoving} onPress={() => void handleSave()}>
+        <DSText>{isSaving ? "Saving..." : "Save this server"}</DSText>
+      </DSButton>
     </DSCard>
   );
 }
-
-function StateScreen({ title, message }: { title: string; message: string }) {
-  return (
-    <View style={styles.stateScreen}>
-      <DSText size={TextSize.XLarge}>{title}</DSText>
-      <DSText color={TextColor.Secondary}>{message}</DSText>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { backgroundColor: "#020617", flex: 1 },
-  content: { gap: 18, padding: 20, paddingTop: 28 },
-  cardContent: { gap: 16 },
-  cardHeader: { gap: 12 },
-  emptyCardContent: { gap: 8 },
-  stateScreen: {
-    backgroundColor: "#020617",
-    flex: 1,
-    gap: 10,
-    justifyContent: "center",
-    padding: 24,
-  },
-});

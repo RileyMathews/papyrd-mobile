@@ -1,10 +1,12 @@
 import { useCallback, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, RefreshControl } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 
 import { DSButton } from "@/components/ds/button";
 import { DSCard } from "@/components/ds/card";
+import { DSScreen } from "@/components/ds/screen";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
+import { SimpleScreen } from "@/components/simple-screen";
 import { getAppSettings, type OpdsServerSettings } from "@/lib/settings";
 
 export default function BrowseRoute() {
@@ -33,27 +35,21 @@ export default function BrowseRoute() {
   );
 
   if (isLoading && servers.length === 0) {
-    return <StateScreen title="Loading catalogs" message="Reading OPDS server settings." />;
+    return <SimpleScreen title="Loading catalogs" message="Reading OPDS server settings." />;
   }
 
   if (error && servers.length === 0) {
-    return <StateScreen title="Couldn’t load catalogs" message={error.message} />;
+    return <SimpleScreen title="Couldn’t load catalogs" message={error.message} />;
   }
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={isLoading} onRefresh={() => void loadServers()} />
-      }
+    <DSScreen
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void loadServers()} />}
     >
-      <View style={styles.header}>
-        <DSText size={TextSize.XLarge}>OPDS catalogs</DSText>
-        <DSText color={TextColor.Secondary}>
-          Choose a configured server to browse. Add more from Settings.
-        </DSText>
-      </View>
+      <DSText size={TextSize.XLarge}>OPDS catalogs</DSText>
+      <DSText color={TextColor.Secondary}>
+        Choose a configured server to browse. Add more from Settings.
+      </DSText>
 
       {servers.map((server) => (
         <Pressable
@@ -68,16 +64,13 @@ export default function BrowseRoute() {
               },
             });
           }}
-          style={({ pressed }) => (pressed ? styles.pressed : null)}
         >
           <DSCard>
-            <View style={styles.cardText}>
-              <DSText>{server.name}</DSText>
-              <DSText color={TextColor.Secondary}>{server.baseUrl}</DSText>
-              {server.username ? (
-                <DSText color={TextColor.Secondary}>Signed in as {server.username}</DSText>
-              ) : null}
-            </View>
+            <DSText>{server.name}</DSText>
+            <DSText color={TextColor.Secondary}>{server.baseUrl}</DSText>
+            {server.username ? (
+              <DSText color={TextColor.Secondary}>Signed in as {server.username}</DSText>
+            ) : null}
           </DSCard>
         </Pressable>
       ))}
@@ -89,16 +82,7 @@ export default function BrowseRoute() {
           onPress={() => router.push("/settings")}
         />
       ) : null}
-    </ScrollView>
-  );
-}
-
-function StateScreen({ title, message }: { title: string; message: string }) {
-  return (
-    <View style={styles.stateScreen}>
-      <DSText size={TextSize.XLarge}>{title}</DSText>
-      <DSText color={TextColor.Secondary}>{message}</DSText>
-    </View>
+    </DSScreen>
   );
 }
 
@@ -112,36 +96,13 @@ function StateCard({
   onPress?: () => void;
 }) {
   return (
-    <View style={styles.stateCard}>
+    <DSCard>
       <DSText color={TextColor.Secondary}>{message}</DSText>
       {actionLabel && onPress ? (
         <DSButton onPress={onPress}>
           <DSText>{actionLabel}</DSText>
         </DSButton>
       ) : null}
-    </View>
+    </DSCard>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { backgroundColor: "#0f172a", flex: 1 },
-  content: { gap: 16, padding: 20, paddingTop: 28 },
-  header: { gap: 6, marginBottom: 8 },
-  pressed: { opacity: 0.85 },
-  cardText: { gap: 5 },
-  stateScreen: {
-    backgroundColor: "#0f172a",
-    flex: 1,
-    gap: 12,
-    justifyContent: "center",
-    padding: 24,
-  },
-  stateCard: {
-    backgroundColor: "#111827",
-    borderColor: "#1f2937",
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 14,
-    padding: 20,
-  },
-});

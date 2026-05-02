@@ -1,41 +1,60 @@
-import { useMemo } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { Image } from "expo-image";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 
+import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
 import { useOpdsResource } from "@/hooks/use-opds-resource";
 import {
+  downloadPublicationToLibrary,
+  findLocalBookForPublication,
+  isNativeDownloadSupported,
+  type LocalBook,
+} from "@/lib/library";
+import {
   fetchOpdsFeed,
+  fetchOpdsPublication,
   getAuthors,
   getFeedEntries,
   getOpdsAuthHeaders,
+  getPublicationAcquisitionLinks,
   getPublicationSelfLink,
   type OpdsFeed,
   type OpdsLink,
   type OpdsPublication,
+  type OpdsPublicationDocument,
   resolveOpdsUrl,
 } from "@/lib/opds";
 import type { OpdsServerSettings } from "@/lib/settings";
-import { ButtonBackgroundColor, DSButton } from "./ds/button";
+import { DSBookCard } from "./ds/book-card";
 import { DSCard } from "./ds/card";
+import { DSScreen } from "./ds/screen";
 import { DSText, TextColor, TextSize } from "./ds/text";
+import { SimpleScreen } from "./simple-screen";
 
 type OpdsFeedScreenProps = {
   href: string;
   server: OpdsServerSettings;
 };
 
+type DownloadActionState =
+  | { kind: "available" }
+  | { kind: "checking" }
+  | { kind: "downloading" }
+  | { kind: "downloaded"; book: LocalBook }
+  | { kind: "unavailable" }
+  | { kind: "unsupported" };
+
 export function OpdsFeedScreen({ href, server }: OpdsFeedScreenProps) {
   const loadFeed = useMemo(() => fetchOpdsFeed.bind(null, server), [server]);
   const { data, error, isLoading, refresh } = useOpdsResource(href, loadFeed);
 
   if (isLoading && !data) {
-    return <StateScreen title="Loading catalog" message="Fetching the OPDS feed." />;
+    return <SimpleScreen title="Loading catalog" message="Fetching the OPDS feed." />;
   }
 
   if (error && !data) {
     return (
-      <StateScreen
+      <SimpleScreen
         title="Couldn’t load catalog"
         message={error.message}
         actionLabel="Try again"
@@ -45,7 +64,7 @@ export function OpdsFeedScreen({ href, server }: OpdsFeedScreenProps) {
   }
 
   if (!data) {
-    return <StateScreen title="Catalog unavailable" message="No feed data was returned." />;
+    return <SimpleScreen title="Catalog unavailable" message="No feed data was returned." />;
   }
 
   return <FeedContent feed={data} isRefreshing={isLoading} onRefresh={refresh} server={server} />;
@@ -65,30 +84,22 @@ function FeedContent({
   const entries = useMemo(() => getFeedEntries(feed), [feed]);
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-    >
-      <View style={styles.header}>
-        <DSText size={TextSize.XLarge}>{feed.metadata?.title ?? "Catalog"}</DSText>
-        {typeof feed.metadata?.numberOfItems === "number" ? (
-          <DSText color={TextColor.Secondary}>
-            {feed.metadata.numberOfItems} items discovered
-          </DSText>
-        ) : null}
-      </View>
+    <DSScreen refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}>
+      <DSText size={TextSize.XLarge}>{feed.metadata?.title ?? "Catalog"}</DSText>
+      {typeof feed.metadata?.numberOfItems === "number" ? (
+        <DSText color={TextColor.Secondary}>{feed.metadata.numberOfItems} items discovered</DSText>
+      ) : null}
 
       {entries.navigation.length > 0 ? (
-        <Section title="Browse">
+        <>
           {entries.navigation.map((link) => (
             <LinkRow key={`${link.href}-${link.title}`} link={link} server={server} />
           ))}
-        </Section>
+        </>
       ) : null}
 
       {entries.groups.map((group, index) => (
-        <View key={`${group.metadata?.title ?? "group"}-${index}`} style={styles.groupBlock}>
+        <View key={`${group.metadata?.title ?? "group"}-${index}`}>
           {group.metadata?.title ? (
             <DSText size={TextSize.Large}>{group.metadata.title}</DSText>
           ) : null}
@@ -108,7 +119,7 @@ function FeedContent({
       ))}
 
       {entries.publications.length > 0 ? (
-        <Section title="Books">
+        <>
           {entries.publications.map((publication, index) => (
             <PublicationCard
               key={`${publication.metadata?.identifier ?? publication.metadata?.title ?? "publication"}-${index}`}
@@ -116,7 +127,7 @@ function FeedContent({
               server={server}
             />
           ))}
-        </Section>
+        </>
       ) : null}
 
       {entries.navigation.length === 0 &&
@@ -124,7 +135,7 @@ function FeedContent({
       entries.publications.length === 0 ? (
         <StateCard message="This feed does not expose navigation or publications yet." />
       ) : null}
-    </ScrollView>
+    </DSScreen>
   );
 }
 
@@ -141,15 +152,12 @@ function LinkRow({ link, server }: { link: OpdsLink; server: OpdsServerSettings 
           },
         });
       }}
-      style={({ pressed }) => [pressed ? styles.pressed : null]}
     >
       <DSCard>
-        <View style={styles.rowTextWrap}>
-          <DSText size={TextSize.Large}>{link.title ?? link.href}</DSText>
-          <DSText color={TextColor.Secondary} size={TextSize.Small}>
-            Feed
-          </DSText>
-        </View>
+        <DSText size={TextSize.Large}>{link.title ?? link.href}</DSText>
+        <DSText color={TextColor.Secondary} size={TextSize.Small}>
+          Feed
+        </DSText>
       </DSCard>
     </Pressable>
   );
@@ -165,91 +173,228 @@ function PublicationCard({
   const cover = publication.images?.[0]?.href;
   const authors = getAuthors(publication.metadata);
   const selfLink = getPublicationSelfLink(publication);
+  const hasAcquisitionLinks = getPublicationAcquisitionLinks(publication).length > 0;
+  const canResolveDownload = hasAcquisitionLinks || Boolean(selfLink);
+  const [downloadedBook, setDownloadedBook] = useState<LocalBook | null>(null);
+  const [isCheckingDownload, setIsCheckingDownload] = useState(() => isNativeDownloadSupported());
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  return (
-    <Pressable
-      disabled={!selfLink}
-      onPress={() => {
-        if (!selfLink) {
+  useEffect(() => {
+    if (!isNativeDownloadSupported()) {
+      setDownloadedBook(null);
+      setIsCheckingDownload(false);
+      return;
+    }
+
+    let isActive = true;
+
+    setDownloadedBook(null);
+    setIsCheckingDownload(true);
+    void findLocalBookForPublication(publication, server)
+      .then((book) => {
+        if (!isActive) {
           return;
         }
 
-        router.push({
-          pathname: "/publication",
-          params: {
-            href: resolveOpdsUrl(selfLink.href, server),
-            title: publication.metadata?.title ?? "Publication",
-            serverId: server.id,
-          },
-        });
-      }}
-      style={({ pressed }) => [pressed ? styles.pressed : null, !selfLink ? styles.disabled : null]}
-    >
-      <DSCard>
-        {cover ? (
-          <Image
-            source={{ uri: resolveOpdsUrl(cover, server), headers: getOpdsAuthHeaders(server) }}
-            style={styles.cover}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={[styles.cover, styles.coverPlaceholder]}>
-            <DSText color={TextColor.Secondary} size={TextSize.Small}>
-              No cover
-            </DSText>
-          </View>
-        )}
+        setDownloadedBook(book);
+        setIsCheckingDownload(false);
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
 
-        <View style={styles.cardContent}>
-          <DSText size={TextSize.Large}>{publication.metadata?.title ?? "Untitled"}</DSText>
-          {authors.length > 0 ? (
-            <DSText color={TextColor.Secondary}>{authors.join(", ")}</DSText>
-          ) : null}
-          {publication.metadata?.modified ? (
-            <DSText color={TextColor.Secondary}>
-              Updated {formatDate(publication.metadata.modified)}
-            </DSText>
-          ) : null}
-          {!selfLink ? (
-            <DSText color={TextColor.Secondary}>No detail document exposed</DSText>
-          ) : null}
-        </View>
-      </DSCard>
-    </Pressable>
-  );
-}
+        setDownloadedBook(null);
+        setIsCheckingDownload(false);
+      });
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return () => {
+      isActive = false;
+    };
+  }, [publication, server]);
+
+  const downloadActionState = getDownloadActionState({
+    canResolveDownload,
+    downloadedBook,
+    isCheckingDownload,
+    isDownloading,
+  });
+
+  async function loadDownloadablePublication(): Promise<OpdsPublicationDocument> {
+    if (hasAcquisitionLinks) {
+      return publication;
+    }
+
+    if (!selfLink) {
+      throw new Error("This publication does not expose a download link.");
+    }
+
+    const publicationDocument = await fetchOpdsPublication(server, selfLink.href);
+
+    if (getPublicationSelfLink(publicationDocument)) {
+      return publicationDocument;
+    }
+
+    return {
+      ...publicationDocument,
+      links: [...(publicationDocument.links ?? []), selfLink],
+    };
+  }
+
+  async function handleDownload() {
+    if (isDownloading) {
+      return;
+    }
+
+    setDownloadError(null);
+    setIsDownloading(true);
+
+    try {
+      const publicationDocument = await loadDownloadablePublication();
+      const book = await downloadPublicationToLibrary(publicationDocument, server);
+      setDownloadedBook(book);
+    } catch (downloadError) {
+      setDownloadError(
+        downloadError instanceof Error ? downloadError.message : "Failed to download this book.",
+      );
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
   return (
-    <View style={styles.section}>
-      <DSText size={TextSize.Large}>{title}</DSText>
-      {children}
-    </View>
+    <DSBookCard
+      authors={authors}
+      coverSource={
+        cover ? { uri: resolveOpdsUrl(cover, server), headers: getOpdsAuthHeaders(server) } : null
+      }
+      detail={!canResolveDownload ? "No download link exposed" : null}
+      footer={
+        <PublicationActions
+          downloadError={downloadError}
+          state={downloadActionState}
+          onDownload={handleDownload}
+        />
+      }
+      subtitle={publication.metadata?.modified ? `Updated ${formatDate(publication.metadata.modified)}` : null}
+      title={publication.metadata?.title ?? "Untitled"}
+    />
   );
 }
 
-function StateScreen({
-  title,
-  message,
-  actionLabel,
-  onPress,
+function getDownloadActionState({
+  canResolveDownload,
+  downloadedBook,
+  isCheckingDownload,
+  isDownloading,
 }: {
-  title: string;
-  message: string;
-  actionLabel?: string;
-  onPress?: () => void;
+  canResolveDownload: boolean;
+  downloadedBook: LocalBook | null;
+  isCheckingDownload: boolean;
+  isDownloading: boolean;
+}): DownloadActionState {
+  if (downloadedBook) {
+    return { kind: "downloaded", book: downloadedBook };
+  }
+
+  if (isDownloading) {
+    return { kind: "downloading" };
+  }
+
+  if (isCheckingDownload) {
+    return { kind: "checking" };
+  }
+
+  if (!canResolveDownload) {
+    return { kind: "unavailable" };
+  }
+
+  if (!isNativeDownloadSupported()) {
+    return { kind: "unsupported" };
+  }
+
+  return { kind: "available" };
+}
+
+function PublicationActions({
+  state,
+  downloadError,
+  onDownload,
+}: {
+  state: DownloadActionState;
+  downloadError: string | null;
+  onDownload: () => Promise<void>;
 }) {
   return (
-    <View style={styles.stateScreen}>
-      <DSText size={TextSize.XLarge}>{title}</DSText>
-      <DSText color={TextColor.Secondary}>{message}</DSText>
-      {actionLabel && onPress ? (
-        <DSButton onPress={onPress} backgroundColor={ButtonBackgroundColor.Primary}>
-          <DSText>{actionLabel}</DSText>
-        </DSButton>
+    <>
+      <DownloadActionButton state={state} onDownload={onDownload} />
+      {state.kind === "unsupported" ? (
+        <DSText color={TextColor.Secondary}>Downloads are only available on iOS and Android.</DSText>
       ) : null}
-    </View>
+      {downloadError ? <DSText color={TextColor.Danger}>{downloadError}</DSText> : null}
+    </>
   );
+}
+
+function DownloadActionButton({
+  state,
+  onDownload,
+}: {
+  state: DownloadActionState;
+  onDownload: () => Promise<void>;
+}) {
+  switch (state.kind) {
+    case "downloaded":
+      return (
+        <DSButton
+          onPress={() => {
+            router.push({
+              pathname: "/reader-foliate" as never,
+              params: {
+                bookId: state.book.id,
+                title: state.book.title,
+              } as never,
+            });
+          }}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+        >
+          <DSText>Read</DSText>
+        </DSButton>
+      );
+
+    case "downloading":
+      return (
+        <DSButton disabled onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
+          <ActivityIndicator color="#f8fafc" />
+          <DSText>Downloading</DSText>
+        </DSButton>
+      );
+
+    case "checking":
+      return (
+        <DSButton disabled onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
+          <DSText>Checking library</DSText>
+        </DSButton>
+      );
+
+    case "unsupported":
+      return (
+        <DSButton disabled onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
+          <DSText>Download</DSText>
+        </DSButton>
+      );
+
+    case "available":
+      return (
+        <DSButton onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
+          <DSText>Download</DSText>
+        </DSButton>
+      );
+
+    case "unavailable":
+      return null;
+  }
 }
 
 function StateCard({ message }: { message: string }) {
@@ -273,54 +418,3 @@ function formatDate(value: string) {
     year: "numeric",
   }).format(date);
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#020617",
-  },
-  content: {
-    gap: 24,
-    padding: 20,
-  },
-  header: {
-    gap: 6,
-    paddingTop: 24,
-  },
-  section: {
-    gap: 12,
-  },
-  groupBlock: {
-    gap: 12,
-  },
-  rowTextWrap: {
-    gap: 4,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  disabled: {
-    opacity: 0.7,
-  },
-  cover: {
-    backgroundColor: "#1e293b",
-    borderRadius: 12,
-    height: 108,
-    width: 76,
-  },
-  coverPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardContent: {
-    gap: 6,
-    justifyContent: "center",
-  },
-  stateScreen: {
-    backgroundColor: "#020617",
-    flex: 1,
-    gap: 12,
-    justifyContent: "center",
-    padding: 24,
-  },
-});
