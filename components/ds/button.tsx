@@ -26,11 +26,12 @@ export function DSButton({
       onPress={onPress}
       style={{
         backgroundColor,
-        alignSelf: "stretch",
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderRadius: 4,
         opacity: disabled ? 0.6 : 1,
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       {children}
