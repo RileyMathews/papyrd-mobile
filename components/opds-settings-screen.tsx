@@ -100,9 +100,11 @@ export function OpdsSettingsScreen() {
         </DSCard>
       ) : null}
 
-      <DSButton onPress={addServer} backgroundColor={ButtonBackgroundColor.Secondary}>
-        <DSText>Add OPDS server</DSText>
-      </DSButton>
+      <DSButton
+        onPress={addServer}
+        backgroundColor={ButtonBackgroundColor.Secondary}
+        title="Add OPDS server"
+      />
     </DSScreen>
   );
 }
@@ -151,9 +153,8 @@ function OpdsServerCard({
         disabled={isRemoving}
         onPress={() => void handleRemove()}
         backgroundColor={ButtonBackgroundColor.Danger}
-      >
-        <DSText size={TextSize.Small}>{isRemoving ? "Removing..." : "Remove"}</DSText>
-      </DSButton>
+        title={isRemoving ? "Removing..." : "Remove"}
+      />
 
       <DSField
         label="Display name"
@@ -183,9 +184,11 @@ function OpdsServerCard({
         secureTextEntry
       />
 
-      <DSButton disabled={isSaving || isRemoving} onPress={() => void handleSave()}>
-        <DSText>{isSaving ? "Saving..." : "Save this server"}</DSText>
-      </DSButton>
+      <DSButton
+        disabled={isSaving || isRemoving}
+        onPress={() => void handleSave()}
+        title={isSaving ? "Saving..." : "Save this server"}
+      />
     </DSCard>
   );
 }

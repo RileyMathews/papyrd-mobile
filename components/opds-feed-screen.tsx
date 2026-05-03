@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, View } from "react-native";
+import { Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 
 import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
@@ -358,38 +358,47 @@ function DownloadActionButton({
             });
           }}
           backgroundColor={ButtonBackgroundColor.Secondary}
-        >
-          <DSText>Read</DSText>
-        </DSButton>
+          title="Read"
+        />
       );
 
     case "downloading":
       return (
-        <DSButton disabled onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
-          <ActivityIndicator color="#f8fafc" />
-          <DSText>Downloading</DSText>
-        </DSButton>
+        <DSButton
+          disabled
+          onPress={() => void onDownload()}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+          title="Downloading"
+        />
       );
 
     case "checking":
       return (
-        <DSButton disabled onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
-          <DSText>Checking library</DSText>
-        </DSButton>
+        <DSButton
+          disabled
+          onPress={() => void onDownload()}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+          title="Checking library"
+        />
       );
 
     case "unsupported":
       return (
-        <DSButton disabled onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
-          <DSText>Download</DSText>
-        </DSButton>
+        <DSButton
+          disabled
+          onPress={() => void onDownload()}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+          title="Download"
+        />
       );
 
     case "available":
       return (
-        <DSButton onPress={() => void onDownload()} backgroundColor={ButtonBackgroundColor.Secondary}>
-          <DSText>Download</DSText>
-        </DSButton>
+        <DSButton
+          onPress={() => void onDownload()}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+          title="Download"
+        />
       );
 
     case "unavailable":

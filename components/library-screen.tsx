@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Alert, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { Image } from "expo-image";
 
@@ -139,9 +139,11 @@ export function LibraryScreen() {
             <DSText size={TextSize.XLarge}>Library</DSText>
           </View>
           {!isSelecting ? (
-            <DSButton backgroundColor={ButtonBackgroundColor.Secondary} onPress={enterSelectMode}>
-              <DSText>Select</DSText>
-            </DSButton>
+            <DSButton
+              backgroundColor={ButtonBackgroundColor.Secondary}
+              onPress={enterSelectMode}
+              title="Select"
+            />
           ) : null}
         </View>
 
@@ -210,19 +212,14 @@ export function LibraryScreen() {
               backgroundColor={ButtonBackgroundColor.Secondary}
               disabled={isDeleting}
               onPress={exitSelectMode}
-            >
-              <DSText color={TextColor.Secondary}>Cancel</DSText>
-            </DSButton>
+              title="Cancel"
+            />
             <DSButton
               backgroundColor={ButtonBackgroundColor.Danger}
               disabled={isDeleting || selectedBooks.length === 0}
               onPress={confirmDeleteSelected}
-            >
-              <View style={styles.buttonContent}>
-                {isDeleting ? <ActivityIndicator color="#fee2e2" size="small" /> : null}
-                <DSText>Delete</DSText>
-              </View>
-            </DSButton>
+              title={isDeleting ? "Deleting..." : "Delete"}
+            />
           </View>
         </View>
       ) : null}
@@ -251,12 +248,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-  },
-  buttonContent: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "center",
   },
   selectionBar: {
     alignItems: "center",

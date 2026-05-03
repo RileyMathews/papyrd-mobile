@@ -134,12 +134,13 @@ export function KosyncSettingsScreen() {
           disabled={isSaving}
           onPress={() => void save(false)}
           backgroundColor={ButtonBackgroundColor.Secondary}
-        >
-          <DSText>{isSaving ? "Saving..." : "Save KOSync"}</DSText>
-        </DSButton>
-        <DSButton disabled={isSaving} onPress={() => void save(true)}>
-          <DSText>{isSaving ? "Testing..." : "Save and test"}</DSText>
-        </DSButton>
+          title={isSaving ? "Saving..." : "Save KOSync"}
+        />
+        <DSButton
+          disabled={isSaving}
+          onPress={() => void save(true)}
+          title={isSaving ? "Testing..." : "Save and test"}
+        />
       </DSCard>
     </DSScreen>
   );

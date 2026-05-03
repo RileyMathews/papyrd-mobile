@@ -99,9 +99,7 @@ function StateCard({
     <DSCard>
       <DSText color={TextColor.Secondary}>{message}</DSText>
       {actionLabel && onPress ? (
-        <DSButton onPress={onPress}>
-          <DSText>{actionLabel}</DSText>
-        </DSButton>
+        <DSButton onPress={onPress} title={actionLabel} />
       ) : null}
     </DSCard>
   );
