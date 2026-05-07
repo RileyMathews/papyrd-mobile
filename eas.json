@@ -22,12 +22,14 @@
   },
   "submit": {
     "internal": {
-      "android": {
-        "track": "internal",
-        "releaseStatus": "draft"
-      },
       "ios": {
         "groups": ["Internal Testers"]
+      }
+    },
+    "closed": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "draft"
       }
     },
     "production": {

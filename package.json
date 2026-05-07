@@ -16,7 +16,7 @@
     "ios:release:build": "bundle exec fastlane ios build",
     "ios:release:internal": "bundle exec fastlane ios internal",
     "ios:release:production": "bundle exec fastlane ios production",
-    "android:release:internal": "bundle exec fastlane android internal",
+    "android:release:closed": "bundle exec fastlane android closed",
     "android:release:production": "bundle exec fastlane android production"
   },
   "dependencies": {

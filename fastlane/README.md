@@ -15,13 +15,13 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ## Android
 
-### android internal
+### android closed
 
 ```sh
-[bundle exec] fastlane android internal
+[bundle exec] fastlane android closed
 ```
 
-Build and publish a signed Android AAB to the Play internal track
+Build and publish a signed Android AAB to the Play closed testing track
 
 ### android production
 

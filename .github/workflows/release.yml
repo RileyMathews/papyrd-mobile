@@ -14,8 +14,8 @@ env:
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
 jobs:
-  android-internal:
-    name: Android Internal
+  android-closed:
+    name: Android Closed Testing
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -51,8 +51,8 @@ jobs:
           chmod +x sops
           sudo mv sops /usr/local/bin/sops
 
-      - name: Deploy Android internal release
-        run: bundle exec fastlane android internal
+      - name: Deploy Android closed testing release
+        run: bundle exec fastlane android closed
 
   ios-internal:
     name: iOS Internal
