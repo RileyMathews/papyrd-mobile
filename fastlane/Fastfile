@@ -340,7 +340,7 @@ platform :android do
       upload_to_play_store(
         json_key: google_key,
         track: "internal",
-        release_status: "completed",
+        release_status: "draft",
         aab: File.join(ROOT_DIR, "android/app/build/outputs/bundle/release/app-release.aab"),
       )
     end
