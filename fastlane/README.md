@@ -21,15 +21,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 [bundle exec] fastlane android closed
 ```
 
-Build and publish a signed Android AAB to the Play closed testing track
-
-### android production
-
-```sh
-[bundle exec] fastlane android production
-```
-
-Build and upload a signed Android AAB to the Play production track as a draft
+Build and publish a signed Android AAB to the Play closed testing track and build a signed APK
 
 ----
 

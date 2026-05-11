@@ -308,52 +308,47 @@ def next_android_version_code(json_key)
   (version_codes.max || 0) + 1
 end
 
-def build_signed_release_bundle(track:, google_key:)
+def build_signed_android_closed_release(google_key:)
   next_version_code = next_android_version_code(google_key)
   ENV["ANDROID_VERSION_CODE"] = next_version_code.to_s
 
-  UI.message("Building Android versionCode #{next_version_code} for #{track}")
+  UI.message("Building Android closed testing versionCode #{next_version_code}")
 
   Dir.chdir(ROOT_DIR) do
     sh("bunx expo prebuild --platform android --clean")
   end
 
+  signing_properties = {
+    "android.injected.signing.store.file" => ENV.fetch("ANDROID_KEYSTORE_PATH"),
+    "android.injected.signing.store.password" => ENV.fetch("ANDROID_KEYSTORE_PASSWORD"),
+    "android.injected.signing.key.alias" => ENV.fetch("ANDROID_KEY_ALIAS"),
+    "android.injected.signing.key.password" => ENV.fetch("ANDROID_KEY_PASSWORD"),
+  }
+
   gradle(
     project_dir: File.join(ROOT_DIR, "android"),
     task: "bundle",
     build_type: "Release",
-    properties: {
-      "android.injected.signing.store.file" => ENV.fetch("ANDROID_KEYSTORE_PATH"),
-      "android.injected.signing.store.password" => ENV.fetch("ANDROID_KEYSTORE_PASSWORD"),
-      "android.injected.signing.key.alias" => ENV.fetch("ANDROID_KEY_ALIAS"),
-      "android.injected.signing.key.password" => ENV.fetch("ANDROID_KEY_PASSWORD"),
-    },
+    properties: signing_properties,
+  )
+
+  gradle(
+    project_dir: File.join(ROOT_DIR, "android"),
+    task: "assemble",
+    build_type: "Release",
+    properties: signing_properties,
   )
 end
 
 platform :android do
-  desc "Build and publish a signed Android AAB to the Play closed testing track"
+  desc "Build and publish a signed Android AAB to the Play closed testing track and build a signed APK"
   lane :closed do
     with_android_release_secrets do |google_key|
-      build_signed_release_bundle(track: "alpha", google_key: google_key)
+      build_signed_android_closed_release(google_key: google_key)
 
       upload_to_play_store(
         json_key: google_key,
         track: "alpha",
-        release_status: "draft",
-        aab: File.join(ROOT_DIR, "android/app/build/outputs/bundle/release/app-release.aab"),
-      )
-    end
-  end
-
-  desc "Build and upload a signed Android AAB to the Play production track as a draft"
-  lane :production do
-    with_android_release_secrets do |google_key|
-      build_signed_release_bundle(track: "production", google_key: google_key)
-
-      upload_to_play_store(
-        json_key: google_key,
-        track: "production",
         release_status: "draft",
         aab: File.join(ROOT_DIR, "android/app/build/outputs/bundle/release/app-release.aab"),
       )

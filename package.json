@@ -16,8 +16,7 @@
     "ios:release:build": "bundle exec fastlane ios build",
     "ios:release:internal": "bundle exec fastlane ios internal",
     "ios:release:production": "bundle exec fastlane ios production",
-    "android:release:closed": "bundle exec fastlane android closed",
-    "android:release:production": "bundle exec fastlane android production"
+    "android:release:closed": "bundle exec fastlane android closed"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

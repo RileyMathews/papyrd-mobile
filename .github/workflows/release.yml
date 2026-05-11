@@ -17,6 +17,8 @@ jobs:
   android-closed:
     name: Android Closed Testing
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +55,20 @@ jobs:
 
       - name: Deploy Android closed testing release
         run: bundle exec fastlane android closed
+
+      - name: Upload Android APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          apk_path="android/app/build/outputs/apk/release/app-release.apk"
+          asset_tag="${GITHUB_REF_NAME//\//-}"
+
+          test -f "$apk_path"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" "$apk_path#Papyrd-${asset_tag}.apk"
 
   ios-internal:
     name: iOS Internal
