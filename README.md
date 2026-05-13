@@ -1,4 +1,10 @@
 # Papyrd
+<p>
+  <img src="docs/screenshots/library.png" alt="Library page" width="20%" />
+  <img src="docs/screenshots/browse.png" alt="Browse page" width="20%" />
+  <img src="docs/screenshots/opds-settings.png" alt="OPDS settings page" width="20%" />
+  <img src="docs/screenshots/reader.png" alt="Reading a book" width="20%" />
+</p>
 
 Papyrd is a mobile app for iOS and Android that connects to OPDS servers to download eBooks and KOSync servers to synchronize reading progress.
 
@@ -6,6 +12,7 @@ This app is part of the same project as the [papyrd server](https://github.com/R
 However, this app will always aim to stay compatible with any OPDS and Kosync server that follows the specifications.
 You are free and welcome to use this app with any OPDS and Kosync server of your choosing.
 Any incompatability with an OPDS or KOsync compliant server will be treated as a bug.
+
 
 # Installing
 ## Android
