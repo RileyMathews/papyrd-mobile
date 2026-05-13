@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import FoliateReaderDom, { type FoliateReaderProgress } from "@/components/readers/foliate/dom";
+import { FOLIATE_READER_THEME } from "@/components/readers/foliate/theme";
 import { SimpleScreen } from "@/components/simple-screen";
 import { KosyncClient } from "@/lib/kosync";
 import {
@@ -328,23 +329,23 @@ async function getRemoteProgress(
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: "#020617",
+    backgroundColor: FOLIATE_READER_THEME.background,
     flex: 1,
   },
   reader: {
-    backgroundColor: "#020617",
+    backgroundColor: FOLIATE_READER_THEME.background,
     flex: 1,
   },
   loadingScreen: {
     alignItems: "center",
-    backgroundColor: "#020617",
+    backgroundColor: FOLIATE_READER_THEME.background,
     flex: 1,
     gap: 12,
     justifyContent: "center",
     padding: 24,
   },
   loadingText: {
-    color: "#cbd5e1",
+    color: FOLIATE_READER_THEME.mutedForeground,
     fontSize: 15,
   },
 });

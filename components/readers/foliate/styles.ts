@@ -1,28 +1,12 @@
-const FOLIATE_READER_THEME_CSS = `
+import {
+  FOLIATE_READER_THEME,
+  type FoliateReaderTheme,
+} from "@/components/readers/foliate/theme";
+
+const FOLIATE_READER_LAYOUT_CSS = `
   @namespace epub "http://www.idpf.org/2007/ops";
-  html {
-    --theme-bg-color: #020617;
-    --theme-fg-color: #e2e8f0;
-    --theme-primary-color: #7dd3fc;
-    color-scheme: dark;
-  }
-  body {
-    color: var(--theme-fg-color);
-    background: var(--theme-bg-color);
-  }
   p, li, blockquote, dd {
     line-height: 1.55;
-  }
-  a:any-link {
-    color: var(--theme-primary-color);
-  }
-  font[color="#000000"], font[color="#000"], font[color="black"],
-  font[color="rgb(0,0,0)"], font[color="rgb(0, 0, 0)"],
-  *[style*="color: rgb(0,0,0)"], *[style*="color: rgb(0, 0, 0)"],
-  *[style*="color: #000"], *[style*="color: #000000"], *[style*="color: black"],
-  *[style*="color:rgb(0,0,0)"], *[style*="color:rgb(0, 0, 0)"],
-  *[style*="color:#000"], *[style*="color:#000000"], *[style*="color:black"] {
-    color: var(--theme-fg-color) !important;
   }
   img, svg {
     max-inline-size: 100%;
@@ -39,6 +23,42 @@ const FOLIATE_READER_THEME_CSS = `
   }
 `;
 
+const FOLIATE_READER_COLOR_SELECTORS = `
+  font[color="#000000"], font[color="#000"], font[color="black"],
+  font[color="rgb(0,0,0)"], font[color="rgb(0, 0, 0)"],
+  *[style*="color: rgb(0,0,0)"], *[style*="color: rgb(0, 0, 0)"],
+  *[style*="color: #000"], *[style*="color: #000000"], *[style*="color: black"],
+  *[style*="color:rgb(0,0,0)"], *[style*="color:rgb(0, 0, 0)"],
+  *[style*="color:#000"], *[style*="color:#000000"], *[style*="color:black"]
+`;
+
+export function buildFoliateColorCss(theme: FoliateReaderTheme = FOLIATE_READER_THEME) {
+  return `
+  html {
+    --bg-texture-id: ${theme.backgroundTextureId};
+    --theme-bg-color: ${theme.background};
+    --theme-fg-color: ${theme.foreground};
+    --theme-primary-color: ${theme.primary};
+    --override-color: ${String(theme.overrideColor)};
+    color-scheme: ${theme.colorScheme};
+    background-color: var(--theme-bg-color);
+    background: var(--theme-bg-color);
+  }
+  html, body {
+    color: var(--theme-fg-color);
+  }
+  body {
+    background: transparent;
+  }
+  a:any-link {
+    color: var(--theme-primary-color);
+  }
+  ${FOLIATE_READER_COLOR_SELECTORS} {
+    color: var(--theme-fg-color) !important;
+  }
+  `;
+}
+
 const BASE_READER_FONT_SIZE = 16;
 
 const FOLIATE_CONTENT_QUIRK_OVERRIDES_CSS = `
@@ -51,7 +71,11 @@ const FOLIATE_CONTENT_QUIRK_OVERRIDES_CSS = `
 `;
 
 export function buildFoliateReaderThemeCss() {
-  return FOLIATE_READER_THEME_CSS;
+  return buildFoliateColorCss();
+}
+
+export function buildFoliateReaderLayoutCss() {
+  return FOLIATE_READER_LAYOUT_CSS;
 }
 
 export function buildFoliateContentQuirkOverridesCss() {
@@ -79,7 +103,7 @@ export function buildFoliateFontCss(fontScale: number) {
 }
 
 export function buildFoliateInjectedCss(fontScale: number) {
-  return `${buildFoliateReaderThemeCss()}\n${buildFoliateFontCss(fontScale)}\n${buildFoliateContentQuirkOverridesCss()}`;
+  return `${buildFoliateReaderLayoutCss()}\n${buildFoliateColorCss()}\n${buildFoliateFontCss(fontScale)}\n${buildFoliateContentQuirkOverridesCss()}`;
 }
 
 export function transformFoliateAuthoredStylesheet(css: string) {

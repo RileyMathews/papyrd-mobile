@@ -13,6 +13,7 @@ import {
   buildFoliateInjectedCss,
   handleFoliateContentTransformEvent,
 } from "@/components/readers/foliate/styles";
+import { FOLIATE_READER_THEME } from "@/components/readers/foliate/theme";
 import { XCFI } from "@/components/readers/foliate/xcfi";
 
 type TocEntry = {
@@ -461,15 +462,9 @@ export default function FoliateReaderDom({
     viewRef.current?.renderer?.setStyles?.(buildFoliateInjectedCss(fontScale));
   }, [fontScale]);
 
-  const progressPercent =
-    typeof state.progressFraction === "number" ? Math.round(state.progressFraction * 100) : null;
-
   return (
     <div style={styles.screen}>
       <div style={styles.controlBar}>
-        <div style={styles.progressText}>
-          {progressPercent == null ? "Loading…" : `${progressPercent}% read`}
-        </div>
         <button
           type="button"
           onClick={() => setShowToc((current) => !current)}
@@ -483,10 +478,7 @@ export default function FoliateReaderDom({
             aria-label="Decrease font size"
             disabled={fontScale <= MIN_FONT_SCALE}
             onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
-            style={{
-              ...styles.fontButton,
-              ...(fontScale <= MIN_FONT_SCALE ? styles.fontButtonDisabled : null),
-            }}
+            style={styles.fontButton}
           >
             A-
           </button>
@@ -503,10 +495,7 @@ export default function FoliateReaderDom({
             aria-label="Increase font size"
             disabled={fontScale >= MAX_FONT_SCALE}
             onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
-            style={{
-              ...styles.fontButton,
-              ...(fontScale >= MAX_FONT_SCALE ? styles.fontButtonDisabled : null),
-            }}
+            style={ styles.fontButton}
           >
             A+
           </button>
@@ -1143,8 +1132,6 @@ function getVisibleText(view: FoliateViewElement | null) {
 
 const styles: Record<string, CSSProperties> = {
   screen: {
-    background: "#020617",
-    color: "#e2e8f0",
     display: "flex",
     flexDirection: "column",
     height: "100vh",
@@ -1154,72 +1141,46 @@ const styles: Record<string, CSSProperties> = {
   },
   controlBar: {
     alignItems: "center",
-    background: "#020617",
     display: "flex",
-    flexShrink: 0,
-    gap: "10px",
     justifyContent: "space-between",
-    minHeight: "52px",
-    padding: "8px 16px",
-    zIndex: 2,
+    padding: "8px",
   },
   tocToggle: {
-    background: "rgba(15, 23, 42, 0.88)",
-    backdropFilter: "blur(14px)",
-    border: "1px solid rgba(148, 163, 184, 0.2)",
+    background: FOLIATE_READER_THEME.panelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.border}`,
     borderRadius: "999px",
-    color: "#e2e8f0",
-    cursor: "pointer",
+    color: FOLIATE_READER_THEME.foreground,
     padding: "10px 14px",
-    pointerEvents: "auto",
   },
   fontControls: {
-    alignItems: "center",
-    background: "rgba(15, 23, 42, 0.88)",
-    border: "1px solid rgba(148, 163, 184, 0.2)",
+    background: FOLIATE_READER_THEME.panelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.border}`,
     borderRadius: "999px",
-    display: "flex",
-    overflow: "hidden",
-    pointerEvents: "auto",
   },
   fontButton: {
     background: "transparent",
     border: 0,
-    color: "#e2e8f0",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: 800,
+    color: FOLIATE_READER_THEME.foreground,
     minWidth: "42px",
-    padding: "10px 8px",
-  },
-  fontButtonDisabled: {
-    color: "#475569",
-    cursor: "default",
+    padding: "8px",
   },
   fontScaleText: {
-    background: "rgba(2, 6, 23, 0.32)",
+    background: FOLIATE_READER_THEME.subtlePanelBackground,
     border: 0,
-    borderLeft: "1px solid rgba(148, 163, 184, 0.14)",
-    borderRight: "1px solid rgba(148, 163, 184, 0.14)",
-    color: "#bae6fd",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: 800,
+    borderLeft: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
+    borderRight: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
+    color: FOLIATE_READER_THEME.primaryMuted,
+    // cursor: "pointer",
+    // fontSize: "12px",
+    // fontWeight: 800,
     minWidth: "52px",
-    padding: "10px 8px",
-  },
-  progressText: {
-    color: "#cbd5e1",
-    fontSize: "13px",
-    fontWeight: 600,
-    pointerEvents: "auto",
-    whiteSpace: "nowrap",
+    padding: "8px",
   },
   tocSheet: {
-    background: "rgba(2, 6, 23, 0.96)",
-    borderTop: "1px solid rgba(148, 163, 184, 0.18)",
+    background: FOLIATE_READER_THEME.sheetBackground,
+    borderTop: `1px solid ${FOLIATE_READER_THEME.sheetBorder}`,
     bottom: 0,
-    boxShadow: "0 -18px 40px rgba(2, 6, 23, 0.48)",
+    // boxShadow: `0 -18px 40px ${FOLIATE_READER_THEME.sheetShadow}`,
     display: "flex",
     flexDirection: "column",
     left: 0,
@@ -1232,42 +1193,40 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     display: "flex",
     justifyContent: "space-between",
-    padding: "14px 16px 12px",
+    padding: "8px",
   },
   tocSheetTitle: {
-    color: "#f8fafc",
+    color: FOLIATE_READER_THEME.strongForeground,
     fontSize: "16px",
     fontWeight: 700,
   },
   tocSheetBody: {
     display: "flex",
     flexDirection: "column",
-    gap: "6px",
     overflow: "auto",
-    padding: "0 10px 14px",
+    padding: "16px",
   },
   tocItem: {
     background: "transparent",
     border: 0,
     borderRadius: "12px",
-    color: "#e2e8f0",
-    cursor: "pointer",
-    padding: "10px 12px",
+    color: FOLIATE_READER_THEME.foreground,
+    padding: "8px",
     textAlign: "left",
   },
   emptyToc: {
-    color: "#94a3b8",
+    color: FOLIATE_READER_THEME.subtleForeground,
     padding: "12px",
   },
   backdrop: {
-    background: "rgba(2, 6, 23, 0.18)",
+    background: FOLIATE_READER_THEME.backdropBackground,
     border: 0,
     inset: 0,
     position: "absolute",
     zIndex: 1,
   },
   imageLightbox: {
-    background: "rgba(2, 6, 23, 0.94)",
+    background: FOLIATE_READER_THEME.lightboxBackground,
     inset: 0,
     overflow: "hidden",
     position: "absolute",
@@ -1282,10 +1241,10 @@ const styles: Record<string, CSSProperties> = {
     zIndex: 0,
   },
   imageLightboxButton: {
-    background: "rgba(15, 23, 42, 0.88)",
-    border: "1px solid rgba(148, 163, 184, 0.24)",
+    background: FOLIATE_READER_THEME.panelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.lightboxBorder}`,
     borderRadius: "999px",
-    color: "#e2e8f0",
+    color: FOLIATE_READER_THEME.foreground,
     cursor: "pointer",
     fontSize: "13px",
     fontWeight: 800,
