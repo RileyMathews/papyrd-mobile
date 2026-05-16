@@ -191,7 +191,8 @@ end
 
 def expo_marketing_version
   output, error, status = Open3.capture3(
-    "bunx",
+    "pnpm",
+    "exec",
     "expo",
     "config",
     "--json",
@@ -233,7 +234,7 @@ def build_signed_ios_app(api_key:)
   UI.message("Building iOS version #{version} build #{next_build_number}")
 
   Dir.chdir(ROOT_DIR) do
-    sh("bunx expo prebuild --platform ios --clean")
+    sh("pnpm exec expo prebuild --platform ios --clean")
   end
 
   update_code_signing_settings(
@@ -315,7 +316,7 @@ def build_signed_android_closed_release(google_key:)
   UI.message("Building Android closed testing versionCode #{next_version_code}")
 
   Dir.chdir(ROOT_DIR) do
-    sh("bunx expo prebuild --platform android --clean")
+    sh("pnpm exec expo prebuild --platform android --clean")
   end
 
   signing_properties = {

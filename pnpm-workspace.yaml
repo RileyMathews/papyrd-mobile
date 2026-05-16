@@ -1,0 +1,22 @@
+packages:
+  - .
+
+overrides:
+  postcss@<8.5.10: 8.5.14
+
+# pnpm v11 reads project settings from this file, not .npmrc.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 10080
+
+strictDepBuilds: true
+dangerouslyAllowAllBuilds: false
+allowBuilds: {}
+ignoreScripts: true
+
+verifyStoreIntegrity: true
+strictStorePkgContentCheck: true
+pmOnFail: error

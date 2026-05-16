@@ -1,0 +1,6 @@
+[tools]
+node = "26.1.0"
+"npm:pnpm" = "11.1.2"
+
+[settings]
+npm.package_manager = "npm"

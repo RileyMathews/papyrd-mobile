@@ -34,11 +34,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up mise
+        uses: jdx/mise-action@v2
 
       - name: Install JavaScript dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -79,11 +79,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up mise
+        uses: jdx/mise-action@v2
 
       - name: Install JavaScript dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

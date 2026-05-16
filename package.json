@@ -2,6 +2,7 @@
   "name": "papyrd",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@11.1.2",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -51,8 +52,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "@types/react-dom": "^19.2.3",
-    "bun-types": "^1.3.13",
+    "@types/react-dom": "~19.1.7",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
