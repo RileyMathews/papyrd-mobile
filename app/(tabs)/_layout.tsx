@@ -28,15 +28,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="browse"
-        options={{
-          tabBarLabel: "Browse",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           tabBarLabel: "Settings",

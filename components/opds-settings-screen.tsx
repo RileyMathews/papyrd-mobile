@@ -95,7 +95,7 @@ export function OpdsSettingsScreen() {
         <DSCard>
           <DSText size={TextSize.Large}>No OPDS servers yet</DSText>
           <DSText color={TextColor.Secondary} size={TextSize.Small}>
-            Add a catalog before using the Browse tab.
+            Add a catalog before adding books to your library.
           </DSText>
         </DSCard>
       ) : null}

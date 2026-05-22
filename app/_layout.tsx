@@ -11,6 +11,7 @@ export default function RootLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="browse" options={{ title: "Browse" }} />
       <Stack.Screen name="feed" options={{ title: "Browse" }} />
       <Stack.Screen name="reader-foliate" options={{ title: "Reader" }} />
     </Stack>

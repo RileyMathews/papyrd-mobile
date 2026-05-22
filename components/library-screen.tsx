@@ -7,6 +7,7 @@ import { Image } from "expo-image";
 import { useLocalLibrary } from "@/hooks/use-local-library";
 import { deleteLocalBook, isNativeDownloadSupported, type LocalBook } from "@/lib/library";
 import { DSButton, ButtonBackgroundColor } from "./ds/button";
+import { DSCard } from "./ds/card";
 import { DSScreen } from "./ds/screen";
 import { DSText, TextColor, TextSize } from "./ds/text";
 import { SimpleScreen } from "./simple-screen";
@@ -102,6 +103,10 @@ export function LibraryScreen() {
     });
   }
 
+  function openCatalogBrowser() {
+    router.push("/browse");
+  }
+
   if (!isNativeDownloadSupported()) {
     return (
       <SimpleScreen
@@ -119,15 +124,6 @@ export function LibraryScreen() {
     return <SimpleScreen title="Couldn’t load library" message={error.message} />;
   }
 
-  if (books.length === 0) {
-    return (
-      <SimpleScreen
-        title="Your library is empty"
-        message="Download a book from the Browse tab and it will appear here."
-      />
-    );
-  }
-
   return (
     <View style={styles.screen}>
       <DSScreen
@@ -139,67 +135,88 @@ export function LibraryScreen() {
             <DSText size={TextSize.XLarge}>Library</DSText>
           </View>
           {!isSelecting ? (
-            <DSButton
-              backgroundColor={ButtonBackgroundColor.Secondary}
-              onPress={enterSelectMode}
-              title="Select"
-            />
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel="Browse OPDS catalogs"
+                accessibilityRole="button"
+                onPress={openCatalogBrowser}
+                style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+              >
+                <Ionicons name="add" size={24} color="#e0f2fe" />
+              </Pressable>
+              {books.length > 0 ? (
+                <DSButton
+                  backgroundColor={ButtonBackgroundColor.Secondary}
+                  onPress={enterSelectMode}
+                  title="Select"
+                />
+              ) : null}
+            </View>
           ) : null}
         </View>
 
-        <View style={styles.shelf}>
-          {books.map((book) => {
-            const isSelected = selectedBookIds.has(book.id);
+        {books.length === 0 ? (
+          <DSCard>
+            <DSText size={TextSize.Large}>Your library is empty</DSText>
+            <DSText color={TextColor.Secondary}>
+              Tap + to browse OPDS catalogs and download books.
+            </DSText>
+          </DSCard>
+        ) : (
+          <View style={styles.shelf}>
+            {books.map((book) => {
+              const isSelected = selectedBookIds.has(book.id);
 
-            return (
-              <Pressable
-                key={book.id}
-                accessibilityHint={isSelecting ? "Selects this book for deletion." : "Opens this book."}
-                accessibilityLabel={isSelecting ? `Select ${book.title}` : `Read ${book.title}`}
-                accessibilityRole={isSelecting ? "checkbox" : "button"}
-                accessibilityState={isSelecting ? { checked: isSelected, disabled: isDeleting } : undefined}
-                disabled={isDeleting}
-                onPress={() => {
-                  if (isSelecting) {
-                    toggleBookSelection(book);
-                    return;
-                  }
+              return (
+                <Pressable
+                  key={book.id}
+                  accessibilityHint={isSelecting ? "Selects this book for deletion." : "Opens this book."}
+                  accessibilityLabel={isSelecting ? `Select ${book.title}` : `Read ${book.title}`}
+                  accessibilityRole={isSelecting ? "checkbox" : "button"}
+                  accessibilityState={isSelecting ? { checked: isSelected, disabled: isDeleting } : undefined}
+                  disabled={isDeleting}
+                  onPress={() => {
+                    if (isSelecting) {
+                      toggleBookSelection(book);
+                      return;
+                    }
 
-                  openBook(book);
-                }}
-                style={({ pressed }) => [styles.bookButton, pressed && styles.bookButtonPressed]}
-              >
-                <View style={styles.coverShadow}>
-                  {book.coverUri ? (
-                    <Image
-                      source={{ uri: book.coverUri }}
-                      style={[styles.cover, isSelected && styles.coverSelected]}
-                      contentFit="cover"
-                    />
-                  ) : (
-                    <View
-                      style={[styles.cover, styles.coverPlaceholder, isSelected && styles.coverSelected]}
-                    />
-                  )}
-                  {isSelecting ? (
-                    <>
-                      {isSelected ? <View pointerEvents="none" style={styles.selectedOverlay} /> : null}
+                    openBook(book);
+                  }}
+                  style={({ pressed }) => [styles.bookButton, pressed && styles.bookButtonPressed]}
+                >
+                  <View style={styles.coverShadow}>
+                    {book.coverUri ? (
+                      <Image
+                        source={{ uri: book.coverUri }}
+                        style={[styles.cover, isSelected && styles.coverSelected]}
+                        contentFit="cover"
+                      />
+                    ) : (
                       <View
-                        pointerEvents="none"
-                        style={[
-                          styles.selectionIndicator,
-                          isSelected && styles.selectionIndicatorSelected,
-                        ]}
-                      >
-                        {isSelected ? <Ionicons name="checkmark" size={15} color="#020617" /> : null}
-                      </View>
-                    </>
-                  ) : null}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+                        style={[styles.cover, styles.coverPlaceholder, isSelected && styles.coverSelected]}
+                      />
+                    )}
+                    {isSelecting ? (
+                      <>
+                        {isSelected ? <View pointerEvents="none" style={styles.selectedOverlay} /> : null}
+                        <View
+                          pointerEvents="none"
+                          style={[
+                            styles.selectionIndicator,
+                            isSelected && styles.selectionIndicatorSelected,
+                          ]}
+                        >
+                          {isSelected ? <Ionicons name="checkmark" size={15} color="#020617" /> : null}
+                        </View>
+                      </>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </DSScreen>
 
       {isSelecting ? (
@@ -236,18 +253,30 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   headerBar: {
-    // alignItems: "center",
+    alignItems: "center",
     backgroundColor: "#020617",
     borderBottomColor: "#111827",
-    // borderBottomWidth: 1,
     flexDirection: "row",
-    // gap: 16,
-    // justifyContent: "space-between",
-    // paddingBottom: 16,
-    // width: "100%",
+    gap: 16,
   },
   headerTitle: {
     flex: 1,
+  },
+  headerActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  addButton: {
+    alignItems: "center",
+    backgroundColor: "#082f49",
+    borderRadius: 999,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  addButtonPressed: {
+    opacity: 0.85,
   },
   selectionBar: {
     alignItems: "center",
