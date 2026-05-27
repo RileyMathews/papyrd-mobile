@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Switch } from "react-native";
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Switch } from "react-native";
 
 import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
 import { DSCard } from "@/components/ds/card";
 import { DSField } from "@/components/ds/field";
-import { DSScreen } from "@/components/ds/screen";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
 import { SimpleScreen } from "@/components/simple-screen";
 import { KosyncClient } from "@/lib/kosync";
@@ -78,70 +77,94 @@ export function KosyncSettingsScreen() {
   }
 
   return (
-    <DSScreen keyboardShouldPersistTaps="handled">
-      <DSText size={TextSize.XLarge}>KOSync settings</DSText>
-      <DSText color={TextColor.Secondary}>
-        Synchronize reading progress with a KOReader-compatible sync server.
-      </DSText>
-
-      <DSCard>
-        <DSText>Enable KOSync</DSText>
-        <DSText color={TextColor.Secondary} size={TextSize.Small}>
-          Pull on open and push progress while reading.
-        </DSText>
-        <Switch
-          value={settings.enabled}
-          onValueChange={(enabled) => setSettings({ ...settings, enabled })}
-          trackColor={{ false: "#334155", true: "#2563eb" }}
-          thumbColor="#f8fafc"
-        />
-
-        <DSField
-          label="Server URL"
-          value={settings.serverUrl}
-          onChangeText={(serverUrl) => setSettings({ ...settings, serverUrl })}
-          placeholder="https://sync.koreader.rocks"
-        />
-        <DSField
-          autoCapitalize="none"
-          label="Username"
-          value={settings.username}
-          onChangeText={(username) => setSettings({ ...settings, username })}
-          placeholder="username"
-        />
-        <DSField
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder={settings.userkey ? "Saved; enter to replace" : "Required"}
-          secureTextEntry
-        />
-        <DSField
-          label="Device name"
-          value={settings.deviceName}
-          onChangeText={(deviceName) => setSettings({ ...settings, deviceName })}
-          placeholder="Papyrd"
-        />
-
-        <DSText color={TextColor.Secondary} size={TextSize.Small}>
-          When a book opens, Papyrd uses server progress if it differs from the saved local
-          position. Local movement is pushed back while reading.
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={styles.screen}
+    >
+      <ScrollView
+        style={styles.scroller}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <DSText size={TextSize.XLarge}>KOSync settings</DSText>
+        <DSText color={TextColor.Secondary}>
+          Synchronize reading progress with a KOReader-compatible sync server.
         </DSText>
 
-        {message ? <DSText>{message}</DSText> : null}
+        <DSCard>
+          <DSText>Enable KOSync</DSText>
+          <DSText color={TextColor.Secondary} size={TextSize.Small}>
+            Pull on open and push progress while reading.
+          </DSText>
+          <Switch
+            value={settings.enabled}
+            onValueChange={(enabled) => setSettings({ ...settings, enabled })}
+            trackColor={{ false: "#334155", true: "#2563eb" }}
+            thumbColor="#f8fafc"
+          />
 
-        <DSButton
-          disabled={isSaving}
-          onPress={() => void save(false)}
-          backgroundColor={ButtonBackgroundColor.Secondary}
-          title={isSaving ? "Saving..." : "Save KOSync"}
-        />
-        <DSButton
-          disabled={isSaving}
-          onPress={() => void save(true)}
-          title={isSaving ? "Testing..." : "Save and test"}
-        />
-      </DSCard>
-    </DSScreen>
+          <DSField
+            label="Server URL"
+            value={settings.serverUrl}
+            onChangeText={(serverUrl) => setSettings({ ...settings, serverUrl })}
+            placeholder="https://sync.koreader.rocks"
+          />
+          <DSField
+            autoCapitalize="none"
+            label="Username"
+            value={settings.username}
+            onChangeText={(username) => setSettings({ ...settings, username })}
+            placeholder="username"
+          />
+          <DSField
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder={settings.userkey ? "Saved; enter to replace" : "Required"}
+            secureTextEntry
+          />
+          <DSField
+            label="Device name"
+            value={settings.deviceName}
+            onChangeText={(deviceName) => setSettings({ ...settings, deviceName })}
+            placeholder="Papyrd"
+          />
+
+          <DSText color={TextColor.Secondary} size={TextSize.Small}>
+            When a book opens, Papyrd uses server progress if it differs from the saved local
+            position. Local movement is pushed back while reading.
+          </DSText>
+
+          {message ? <DSText>{message}</DSText> : null}
+
+          <DSButton
+            disabled={isSaving}
+            onPress={() => void save(false)}
+            backgroundColor={ButtonBackgroundColor.Secondary}
+            title={isSaving ? "Saving..." : "Save KOSync"}
+          />
+          <DSButton
+            disabled={isSaving}
+            onPress={() => void save(true)}
+            title={isSaving ? "Testing..." : "Save and test"}
+          />
+        </DSCard>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: "#020617",
+    flex: 1,
+  },
+  scroller: {
+    flex: 1,
+  },
+  content: {
+    gap: 16,
+    padding: 20,
+    paddingTop: 28,
+  },
+});

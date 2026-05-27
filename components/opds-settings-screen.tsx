@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 
 import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
 import { DSCard } from "@/components/ds/card";
 import { DSField } from "@/components/ds/field";
-import { DSScreen } from "@/components/ds/screen";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
 import { SimpleScreen } from "@/components/simple-screen";
 import {
@@ -78,34 +78,43 @@ export function OpdsSettingsScreen() {
   }
 
   return (
-    <DSScreen keyboardShouldPersistTaps="handled">
-      {message ? <DSText>{message}</DSText> : null}
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={styles.screen}
+    >
+      <ScrollView
+        style={styles.scroller}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {message ? <DSText>{message}</DSText> : null}
 
-      {servers.map((server, index) => (
-        <OpdsServerCard
-          key={server.id}
-          server={server}
-          title={`Server ${index + 1}`}
-          onSave={saveServer}
-          onRemove={removeServer}
+        {servers.map((server, index) => (
+          <OpdsServerCard
+            key={server.id}
+            server={server}
+            title={`Server ${index + 1}`}
+            onSave={saveServer}
+            onRemove={removeServer}
+          />
+        ))}
+
+        {servers.length === 0 ? (
+          <DSCard>
+            <DSText size={TextSize.Large}>No OPDS servers yet</DSText>
+            <DSText color={TextColor.Secondary} size={TextSize.Small}>
+              Add a catalog before adding books to your library.
+            </DSText>
+          </DSCard>
+        ) : null}
+
+        <DSButton
+          onPress={addServer}
+          backgroundColor={ButtonBackgroundColor.Secondary}
+          title="Add OPDS server"
         />
-      ))}
-
-      {servers.length === 0 ? (
-        <DSCard>
-          <DSText size={TextSize.Large}>No OPDS servers yet</DSText>
-          <DSText color={TextColor.Secondary} size={TextSize.Small}>
-            Add a catalog before adding books to your library.
-          </DSText>
-        </DSCard>
-      ) : null}
-
-      <DSButton
-        onPress={addServer}
-        backgroundColor={ButtonBackgroundColor.Secondary}
-        title="Add OPDS server"
-      />
-    </DSScreen>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -174,13 +183,13 @@ function OpdsServerCard({
         label="Username"
         value={draft.username}
         onChangeText={(username) => setDraft({ ...draft, username })}
-        placeholder="Optional"
+        placeholder="username"
       />
       <DSField
         label="Password"
         value={draft.password}
         onChangeText={(password) => setDraft({ ...draft, password })}
-        placeholder="Optional"
+        placeholder="password"
         secureTextEntry
       />
 
@@ -192,3 +201,18 @@ function OpdsServerCard({
     </DSCard>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: "#020617",
+    flex: 1,
+  },
+  scroller: {
+    flex: 1,
+  },
+  content: {
+    gap: 16,
+    padding: 20,
+    paddingTop: 28,
+  },
+});
