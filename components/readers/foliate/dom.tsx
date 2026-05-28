@@ -15,6 +15,7 @@ import {
 } from "@/components/readers/foliate/styles";
 import { FOLIATE_READER_THEME } from "@/components/readers/foliate/theme";
 import { XCFI } from "@/components/readers/foliate/xcfi";
+import type { ReaderColumnPreference } from "@/lib/settings";
 
 type TocEntry = {
   depth: number;
@@ -25,10 +26,12 @@ type TocEntry = {
 
 type FoliateReaderDomProps = {
   bookTitle: string;
+  columnPreference: ReaderColumnPreference;
   fontScale: number;
   initialCfi?: string | null;
   remoteXPointer?: string | null;
   loadBook: () => Promise<string | Uint8Array | ArrayBuffer>;
+  onColumnPreferenceChange: (columnPreference: ReaderColumnPreference) => void;
   onFontScaleChange: (fontScale: number) => void;
   onProgressChanged?: (progress: FoliateReaderProgress) => Promise<void>;
   reportDiagnostic: (message: string) => Promise<void>;
@@ -170,9 +173,11 @@ const MAX_FONT_SCALE = 1.8;
 
 export default function FoliateReaderDom({
   bookTitle,
+  columnPreference,
   fontScale,
   initialCfi,
   loadBook,
+  onColumnPreferenceChange,
   onFontScaleChange,
   onProgressChanged,
   reportDiagnostic,
@@ -181,6 +186,7 @@ export default function FoliateReaderDom({
 }: FoliateReaderDomProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<FoliateViewElement | null>(null);
+  const columnPreferenceRef = useRef(columnPreference);
   const fontScaleRef = useRef(fontScale);
   const loadBookRef = useRef(loadBook);
   const onProgressChangedRef = useRef(onProgressChanged);
@@ -192,6 +198,7 @@ export default function FoliateReaderDom({
   const [showToc, setShowToc] = useState(false);
   const [activeImage, setActiveImage] = useState<ActiveReaderImage | null>(null);
 
+  columnPreferenceRef.current = columnPreference;
   fontScaleRef.current = fontScale;
   loadBookRef.current = loadBook;
   onProgressChangedRef.current = onProgressChanged;
@@ -207,6 +214,10 @@ export default function FoliateReaderDom({
     },
     [onFontScaleChange],
   );
+
+  const toggleColumnPreference = useCallback(() => {
+    onColumnPreferenceChange(columnPreference === "single" ? "auto" : "single");
+  }, [columnPreference, onColumnPreferenceChange]);
 
   const logDiagnostic = useCallback((message: string) => {
     console.log(`[foliate-reader] ${message}`);
@@ -362,6 +373,10 @@ export default function FoliateReaderDom({
         view.book?.transformTarget?.addEventListener("data", handleFoliateContentTransformEvent);
 
         view.renderer?.setAttribute("flow", "paginated");
+        view.renderer?.setAttribute(
+          "max-column-count",
+          getMaxColumnCount(columnPreferenceRef.current),
+        );
         view.renderer?.setAttribute("gap", "5%");
         view.renderer?.setAttribute("margin-top", "12px");
         view.renderer?.setAttribute("margin-right", "12px");
@@ -462,6 +477,10 @@ export default function FoliateReaderDom({
     viewRef.current?.renderer?.setStyles?.(buildFoliateInjectedCss(fontScale));
   }, [fontScale]);
 
+  useEffect(() => {
+    viewRef.current?.renderer?.setAttribute("max-column-count", getMaxColumnCount(columnPreference));
+  }, [columnPreference]);
+
   return (
     <div style={styles.screen}>
       <div style={styles.controlBar}>
@@ -472,33 +491,47 @@ export default function FoliateReaderDom({
         >
           {showToc ? "Hide chapters" : "Chapters"}
         </button>
-        <div style={styles.fontControls} aria-label="Reader font scale controls">
+        <div style={styles.readerControls}>
           <button
             type="button"
-            aria-label="Decrease font size"
-            disabled={fontScale <= MIN_FONT_SCALE}
-            onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
-            style={styles.fontButton}
+            aria-label="Toggle single-column reader layout"
+            aria-pressed={columnPreference === "single"}
+            onClick={toggleColumnPreference}
+            style={{
+              ...styles.columnToggle,
+              ...(columnPreference === "single" ? styles.columnToggleActive : undefined),
+            }}
           >
-            A-
+            {columnPreference === "single" ? "1 col" : "Auto cols"}
           </button>
-          <button
-            type="button"
-            aria-label="Reset font size"
-            onClick={() => updateFontScale(1)}
-            style={styles.fontScaleText}
-          >
-            {Math.round(fontScale * 100)}%
-          </button>
-          <button
-            type="button"
-            aria-label="Increase font size"
-            disabled={fontScale >= MAX_FONT_SCALE}
-            onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
-            style={ styles.fontButton}
-          >
-            A+
-          </button>
+          <div style={styles.fontControls} aria-label="Reader font scale controls">
+            <button
+              type="button"
+              aria-label="Decrease font size"
+              disabled={fontScale <= MIN_FONT_SCALE}
+              onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
+              style={styles.fontButton}
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              aria-label="Reset font size"
+              onClick={() => updateFontScale(1)}
+              style={styles.fontScaleText}
+            >
+              {Math.round(fontScale * 100)}%
+            </button>
+            <button
+              type="button"
+              aria-label="Increase font size"
+              disabled={fontScale >= MAX_FONT_SCALE}
+              onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
+              style={styles.fontButton}
+            >
+              A+
+            </button>
+          </div>
         </div>
       </div>
 
@@ -871,6 +904,10 @@ function clampFontScale(fontScale: number) {
   return Math.round(Math.min(Math.max(fontScale, MIN_FONT_SCALE), MAX_FONT_SCALE) * 100) / 100;
 }
 
+function getMaxColumnCount(columnPreference: ReaderColumnPreference) {
+  return columnPreference === "single" ? "1" : "2";
+}
+
 async function createBookFile(payload: string | Uint8Array | ArrayBuffer, bookTitle: string) {
   const bytes =
     typeof payload === "string"
@@ -1142,8 +1179,28 @@ const styles: Record<string, CSSProperties> = {
   controlBar: {
     alignItems: "center",
     display: "flex",
+    gap: "8px",
     justifyContent: "space-between",
     padding: "8px",
+  },
+  readerControls: {
+    alignItems: "center",
+    display: "flex",
+    gap: "8px",
+    marginLeft: "auto",
+  },
+  columnToggle: {
+    background: FOLIATE_READER_THEME.panelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.border}`,
+    borderRadius: "999px",
+    color: FOLIATE_READER_THEME.foreground,
+    minWidth: "74px",
+    padding: "9px 12px",
+    whiteSpace: "nowrap",
+  },
+  columnToggleActive: {
+    borderColor: FOLIATE_READER_THEME.primary,
+    color: FOLIATE_READER_THEME.primaryMuted,
   },
   tocToggle: {
     background: FOLIATE_READER_THEME.panelBackground,

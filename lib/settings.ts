@@ -26,11 +26,15 @@ export type OpdsServerSettings = {
   password: string;
 };
 
+export type ReaderColumnPreference = "auto" | "single";
+
 export type ReaderSettings = {
+  columnPreference: ReaderColumnPreference;
   fontScale: number;
 };
 
 const DEFAULT_READER_SETTINGS: ReaderSettings = {
+  columnPreference: "auto",
   fontScale: 1,
 };
 
@@ -157,8 +161,13 @@ function normalizeKosyncSettings(settings?: Partial<KosyncSettings>): KosyncSett
 
 function normalizeReaderSettings(settings?: Partial<ReaderSettings>): ReaderSettings {
   return {
+    columnPreference: normalizeReaderColumnPreference(settings?.columnPreference),
     fontScale: clampReaderFontScale(settings?.fontScale ?? DEFAULT_READER_SETTINGS.fontScale),
   };
+}
+
+function normalizeReaderColumnPreference(value: unknown): ReaderColumnPreference {
+  return value === "single" ? "single" : DEFAULT_READER_SETTINGS.columnPreference;
 }
 
 function normalizeOpdsServers(

@@ -23,6 +23,7 @@ import {
   getAppSettings,
   saveReaderSettings,
   type KosyncSettings,
+  type ReaderColumnPreference,
   type ReaderSettings,
 } from "@/lib/settings";
 
@@ -37,7 +38,10 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
   const [book, setBook] = useState<LocalBook | null>(null);
   const [initialCfi, setInitialCfi] = useState<string | null>(null);
   const [remoteXPointer, setRemoteXPointer] = useState<string | null>(null);
-  const [readerSettings, setReaderSettings] = useState<ReaderSettings>({ fontScale: 1 });
+  const [readerSettings, setReaderSettings] = useState<ReaderSettings>({
+    columnPreference: "auto",
+    fontScale: 1,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const settingsRef = useRef<KosyncSettings | null>(null);
@@ -239,6 +243,22 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
     [appendDiagnostic, readerSettings],
   );
 
+  const handleColumnPreferenceChange = useCallback(
+    (nextColumnPreference: ReaderColumnPreference) => {
+      const nextReaderSettings = {
+        ...readerSettings,
+        columnPreference: nextColumnPreference,
+      };
+
+      setReaderSettings(nextReaderSettings);
+      void saveReaderSettings(nextReaderSettings).catch((error) => {
+        const message = error instanceof Error ? error.message : "Failed to save reader settings.";
+        void appendDiagnostic(`reader: failed to save column preference (${message})`);
+      });
+    },
+    [appendDiagnostic, readerSettings],
+  );
+
   if (!isNativeDownloadSupported()) {
     return (
       <SimpleScreen
@@ -270,9 +290,11 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
     <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
       <FoliateReaderDom
         bookTitle={book.title}
+        columnPreference={readerSettings.columnPreference}
         fontScale={readerSettings.fontScale}
         initialCfi={initialCfi}
         loadBook={loadBookBase64}
+        onColumnPreferenceChange={handleColumnPreferenceChange}
         onFontScaleChange={handleFontScaleChange}
         onProgressChanged={handleProgressChanged}
         reportDiagnostic={appendDiagnostic}
