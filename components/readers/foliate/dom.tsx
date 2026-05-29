@@ -24,6 +24,8 @@ type TocEntry = {
   label: string;
 };
 
+type ReaderPanelView = "settings" | "chapters";
+
 type FoliateReaderDomProps = {
   bookTitle: string;
   columnPreference: ReaderColumnPreference;
@@ -195,7 +197,7 @@ export default function FoliateReaderDom({
   const testBridgeRef = useRef(testBridge);
   const stateRef = useRef<FoliateReaderDomTestState>(EMPTY_STATE);
   const [state, setState] = useState<FoliateReaderDomTestState>(EMPTY_STATE);
-  const [showToc, setShowToc] = useState(false);
+  const [activePanel, setActivePanel] = useState<ReaderPanelView | null>(null);
   const [activeImage, setActiveImage] = useState<ActiveReaderImage | null>(null);
 
   columnPreferenceRef.current = columnPreference;
@@ -268,7 +270,7 @@ export default function FoliateReaderDom({
 
       try {
         await view.goTo(entry.href);
-        setShowToc(false);
+        setActivePanel(null);
         patchState({ status: "" });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to open chapter.";
@@ -356,7 +358,7 @@ export default function FoliateReaderDom({
           logDiagnostic(
             `image: opening ${image.width ?? "unknown"}x${image.height ?? "unknown"} ${image.src.slice(0, 80)}`,
           );
-          setShowToc(false);
+          setActivePanel(null);
           setActiveImage(image);
         });
 
@@ -486,97 +488,179 @@ export default function FoliateReaderDom({
       <div style={styles.controlBar}>
         <button
           type="button"
-          onClick={() => setShowToc((current) => !current)}
-          style={styles.tocToggle}
+          aria-label="Reader settings"
+          aria-expanded={activePanel !== null}
+          onClick={() => setActivePanel((current) => (current ? null : "settings"))}
+          style={{
+            ...styles.settingsToggle,
+            ...(activePanel ? styles.settingsToggleActive : undefined),
+          }}
         >
-          {showToc ? "Hide chapters" : "Chapters"}
+          <GearIcon />
         </button>
-        <div style={styles.readerControls}>
-          <button
-            type="button"
-            aria-label="Toggle single-column reader layout"
-            aria-pressed={columnPreference === "single"}
-            onClick={toggleColumnPreference}
-            style={{
-              ...styles.columnToggle,
-              ...(columnPreference === "single" ? styles.columnToggleActive : undefined),
-            }}
-          >
-            {columnPreference === "single" ? "1 col" : "Auto cols"}
-          </button>
-          <div style={styles.fontControls} aria-label="Reader font scale controls">
-            <button
-              type="button"
-              aria-label="Decrease font size"
-              disabled={fontScale <= MIN_FONT_SCALE}
-              onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
-              style={styles.fontButton}
-            >
-              A-
-            </button>
-            <button
-              type="button"
-              aria-label="Reset font size"
-              onClick={() => updateFontScale(1)}
-              style={styles.fontScaleText}
-            >
-              {Math.round(fontScale * 100)}%
-            </button>
-            <button
-              type="button"
-              aria-label="Increase font size"
-              disabled={fontScale >= MAX_FONT_SCALE}
-              onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
-              style={styles.fontButton}
-            >
-              A+
-            </button>
-          </div>
-        </div>
       </div>
 
       <div data-testid="foliate-reader-viewport" ref={containerRef} style={styles.readerViewport} />
 
-      {showToc ? (
+      {activePanel ? (
         <>
           <button
             type="button"
-            aria-label="Close chapters"
-            onClick={() => setShowToc(false)}
+            aria-label="Close reader settings"
+            onClick={() => setActivePanel(null)}
             style={styles.backdrop}
           />
-          <aside style={styles.tocSheet}>
-            <div style={styles.tocSheetHeader}>
-              <div style={styles.tocSheetTitle}>Chapters</div>
-              <button type="button" onClick={() => setShowToc(false)} style={styles.tocToggle}>
+          <aside style={styles.settingsSheet}>
+            <div style={styles.settingsSheetHeader}>
+              {activePanel === "chapters" ? (
+                <button
+                  type="button"
+                  onClick={() => setActivePanel("settings")}
+                  style={styles.panelHeaderButton}
+                >
+                  Back
+                </button>
+              ) : null}
+              <div style={styles.settingsSheetTitle}>
+                {activePanel === "chapters" ? "Chapters" : "Reader settings"}
+              </div>
+              <button type="button" onClick={() => setActivePanel(null)} style={styles.panelHeaderButton}>
                 Close
               </button>
             </div>
-            <div style={styles.tocSheetBody}>
-              {state.tocEntries.length > 0 ? (
-                state.tocEntries.map((entry, index) => (
+            {activePanel === "settings" ? (
+              <div style={styles.settingsSheetBody}>
+                <div style={styles.settingSection}>
+                  <div style={styles.settingSectionTitle}>Text</div>
+                  <div style={styles.settingRow}>
+                    <div style={styles.settingRowText}>
+                      <div style={styles.settingRowTitle}>Font size</div>
+                      <div style={styles.settingRowSubtitle}>{Math.round(fontScale * 100)}%</div>
+                    </div>
+                    <div style={styles.fontControls} aria-label="Reader font scale controls">
+                      <button
+                        type="button"
+                        aria-label="Decrease font size"
+                        disabled={fontScale <= MIN_FONT_SCALE}
+                        onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
+                        style={{
+                          ...styles.fontButton,
+                          ...(fontScale <= MIN_FONT_SCALE ? styles.fontButtonDisabled : undefined),
+                        }}
+                      >
+                        A-
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Reset font size"
+                        onClick={() => updateFontScale(1)}
+                        style={styles.fontScaleText}
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Increase font size"
+                        disabled={fontScale >= MAX_FONT_SCALE}
+                        onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
+                        style={{
+                          ...styles.fontButton,
+                          ...(fontScale >= MAX_FONT_SCALE ? styles.fontButtonDisabled : undefined),
+                        }}
+                      >
+                        A+
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={styles.settingSection}>
+                  <div style={styles.settingSectionTitle}>Layout</div>
+                  <div style={styles.settingRow}>
+                    <div style={styles.settingRowText}>
+                      <div style={styles.settingRowTitle}>Columns</div>
+                      <div style={styles.settingRowSubtitle}>
+                        {columnPreference === "single" ? "Single column" : "Automatic columns"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Toggle single-column reader layout"
+                      aria-pressed={columnPreference === "single"}
+                      onClick={toggleColumnPreference}
+                      style={{
+                        ...styles.columnToggle,
+                        ...(columnPreference === "single" ? styles.columnToggleActive : undefined),
+                      }}
+                    >
+                      {columnPreference === "single" ? "1 col" : "Auto"}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={styles.settingSection}>
+                  <div style={styles.settingSectionTitle}>Book</div>
                   <button
-                    key={entry.id}
                     type="button"
-                    onClick={() => void jumpToChapter(index)}
-                    style={{
-                      ...styles.tocItem,
-                      paddingLeft: `${16 + entry.depth * 14}px`,
-                    }}
+                    onClick={() => setActivePanel("chapters")}
+                    style={styles.panelMenuRow}
                   >
-                    {entry.label}
+                    <span style={styles.settingRowText}>
+                      <span style={styles.settingRowTitle}>Chapters</span>
+                      <span style={styles.settingRowSubtitle}>
+                        {state.currentChapterLabel ??
+                          (state.tocEntries.length > 0 ? `${state.tocEntries.length} chapters` : "No chapters")}
+                      </span>
+                    </span>
+                    <span style={styles.panelMenuChevron}>&gt;</span>
                   </button>
-                ))
-              ) : (
-                <div style={styles.emptyToc}>This book does not expose a table of contents.</div>
-              )}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div style={styles.settingsSheetBody}>
+                {state.tocEntries.length > 0 ? (
+                  state.tocEntries.map((entry, index) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => void jumpToChapter(index)}
+                      style={{
+                        ...styles.tocItem,
+                        paddingLeft: `${16 + entry.depth * 14}px`,
+                      }}
+                    >
+                      {entry.label}
+                    </button>
+                  ))
+                ) : (
+                  <div style={styles.emptyToc}>This book does not expose a table of contents.</div>
+                )}
+              </div>
+            )}
           </aside>
         </>
       ) : null}
 
       {activeImage ? <ImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
     </div>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      style={styles.settingsIcon}
+    >
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
   );
 }
 
@@ -1180,14 +1264,30 @@ const styles: Record<string, CSSProperties> = {
     alignItems: "center",
     display: "flex",
     gap: "8px",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     padding: "8px",
   },
-  readerControls: {
+  settingsToggle: {
     alignItems: "center",
+    background: FOLIATE_READER_THEME.panelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.border}`,
+    borderRadius: "999px",
+    color: FOLIATE_READER_THEME.foreground,
+    cursor: "pointer",
     display: "flex",
-    gap: "8px",
-    marginLeft: "auto",
+    height: "44px",
+    justifyContent: "center",
+    padding: 0,
+    width: "44px",
+  },
+  settingsToggleActive: {
+    borderColor: FOLIATE_READER_THEME.primary,
+    color: FOLIATE_READER_THEME.primaryMuted,
+  },
+  settingsIcon: {
+    display: "block",
+    height: "22px",
+    width: "22px",
   },
   columnToggle: {
     background: FOLIATE_READER_THEME.panelBackground,
@@ -1202,24 +1302,25 @@ const styles: Record<string, CSSProperties> = {
     borderColor: FOLIATE_READER_THEME.primary,
     color: FOLIATE_READER_THEME.primaryMuted,
   },
-  tocToggle: {
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    color: FOLIATE_READER_THEME.foreground,
-    padding: "10px 14px",
-  },
   fontControls: {
+    alignItems: "center",
     background: FOLIATE_READER_THEME.panelBackground,
     border: `1px solid ${FOLIATE_READER_THEME.border}`,
     borderRadius: "999px",
+    display: "flex",
+    overflow: "hidden",
   },
   fontButton: {
     background: "transparent",
     border: 0,
     color: FOLIATE_READER_THEME.foreground,
+    cursor: "pointer",
     minWidth: "42px",
     padding: "8px",
+  },
+  fontButtonDisabled: {
+    color: FOLIATE_READER_THEME.disabledForeground,
+    cursor: "not-allowed",
   },
   fontScaleText: {
     background: FOLIATE_READER_THEME.subtlePanelBackground,
@@ -1227,41 +1328,107 @@ const styles: Record<string, CSSProperties> = {
     borderLeft: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
     borderRight: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
     color: FOLIATE_READER_THEME.primaryMuted,
-    // cursor: "pointer",
-    // fontSize: "12px",
-    // fontWeight: 800,
-    minWidth: "52px",
+    cursor: "pointer",
+    minWidth: "64px",
     padding: "8px",
   },
-  tocSheet: {
+  settingsSheet: {
     background: FOLIATE_READER_THEME.sheetBackground,
     borderTop: `1px solid ${FOLIATE_READER_THEME.sheetBorder}`,
     bottom: 0,
-    // boxShadow: `0 -18px 40px ${FOLIATE_READER_THEME.sheetShadow}`,
     display: "flex",
     flexDirection: "column",
     left: 0,
-    maxHeight: "72vh",
+    maxHeight: "78vh",
     position: "absolute",
     right: 0,
     zIndex: 3,
   },
-  tocSheetHeader: {
+  settingsSheetHeader: {
     alignItems: "center",
     display: "flex",
+    gap: "8px",
     justifyContent: "space-between",
-    padding: "8px",
+    padding: "10px 12px",
   },
-  tocSheetTitle: {
+  settingsSheetTitle: {
     color: FOLIATE_READER_THEME.strongForeground,
+    flex: 1,
     fontSize: "16px",
     fontWeight: 700,
   },
-  tocSheetBody: {
+  panelHeaderButton: {
+    background: FOLIATE_READER_THEME.panelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.border}`,
+    borderRadius: "999px",
+    color: FOLIATE_READER_THEME.foreground,
+    cursor: "pointer",
+    padding: "9px 12px",
+  },
+  settingsSheetBody: {
     display: "flex",
     flexDirection: "column",
     overflow: "auto",
-    padding: "16px",
+    padding: "8px 16px 20px",
+  },
+  settingSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    padding: "8px 0",
+  },
+  settingSectionTitle: {
+    color: FOLIATE_READER_THEME.subtleForeground,
+    fontSize: "12px",
+    fontWeight: 800,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  },
+  settingRow: {
+    alignItems: "center",
+    background: FOLIATE_READER_THEME.subtlePanelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
+    borderRadius: "16px",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "12px",
+    justifyContent: "space-between",
+    padding: "12px",
+  },
+  settingRowText: {
+    display: "flex",
+    flex: 1,
+    flexDirection: "column",
+    gap: "3px",
+    minWidth: 0,
+  },
+  settingRowTitle: {
+    color: FOLIATE_READER_THEME.strongForeground,
+    fontSize: "15px",
+    fontWeight: 700,
+  },
+  settingRowSubtitle: {
+    color: FOLIATE_READER_THEME.subtleForeground,
+    fontSize: "13px",
+  },
+  panelMenuRow: {
+    alignItems: "center",
+    background: FOLIATE_READER_THEME.subtlePanelBackground,
+    border: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
+    borderRadius: "16px",
+    color: FOLIATE_READER_THEME.foreground,
+    cursor: "pointer",
+    display: "flex",
+    gap: "12px",
+    justifyContent: "space-between",
+    padding: "12px",
+    textAlign: "left",
+    width: "100%",
+  },
+  panelMenuChevron: {
+    color: FOLIATE_READER_THEME.primaryMuted,
+    fontSize: "18px",
+    fontWeight: 700,
   },
   tocItem: {
     background: "transparent",
