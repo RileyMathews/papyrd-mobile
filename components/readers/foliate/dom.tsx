@@ -17,25 +17,35 @@ import { FOLIATE_READER_THEME } from "@/components/readers/foliate/theme";
 import { XCFI } from "@/components/readers/foliate/xcfi";
 import type { ReaderColumnPreference } from "@/lib/settings";
 
-type TocEntry = {
+export type FoliateReaderTocEntry = {
   depth: number;
   href: string;
   id: string;
   label: string;
 };
 
-type ReaderPanelView = "settings" | "chapters";
+export type FoliateReaderState = {
+  currentChapterLabel: string | null;
+  currentHref: string | null;
+  isReady: boolean;
+  tocEntries: FoliateReaderTocEntry[];
+};
+
+export type FoliateReaderChapterNavigationRequest = {
+  id: number;
+  index: number;
+};
 
 type FoliateReaderDomProps = {
   bookTitle: string;
+  chapterNavigationRequest?: FoliateReaderChapterNavigationRequest | null;
   columnPreference: ReaderColumnPreference;
   fontScale: number;
   initialCfi?: string | null;
   remoteXPointer?: string | null;
   loadBook: () => Promise<string | Uint8Array | ArrayBuffer>;
-  onColumnPreferenceChange: (columnPreference: ReaderColumnPreference) => void;
-  onFontScaleChange: (fontScale: number) => void;
   onProgressChanged?: (progress: FoliateReaderProgress) => Promise<void>;
+  onReaderStateChange?: (state: FoliateReaderState) => void;
   reportDiagnostic: (message: string) => Promise<void>;
   dom?: import("expo/dom").DOMProps;
   testBridge?: {
@@ -88,7 +98,7 @@ export type FoliateReaderDomTestState = {
   isReady: boolean;
   progressFraction: number | null;
   status: string;
-  tocEntries: TocEntry[];
+  tocEntries: FoliateReaderTocEntry[];
 };
 
 export type FoliateReaderDomTestApi = {
@@ -169,19 +179,15 @@ const EMPTY_STATE: FoliateReaderDomTestState = {
   tocEntries: [],
 };
 
-const FONT_SCALE_STEP = 0.1;
-const MIN_FONT_SCALE = 0.8;
-const MAX_FONT_SCALE = 1.8;
-
 export default function FoliateReaderDom({
   bookTitle,
+  chapterNavigationRequest,
   columnPreference,
   fontScale,
   initialCfi,
   loadBook,
-  onColumnPreferenceChange,
-  onFontScaleChange,
   onProgressChanged,
+  onReaderStateChange,
   reportDiagnostic,
   remoteXPointer,
   testBridge,
@@ -192,34 +198,24 @@ export default function FoliateReaderDom({
   const fontScaleRef = useRef(fontScale);
   const loadBookRef = useRef(loadBook);
   const onProgressChangedRef = useRef(onProgressChanged);
+  const onReaderStateChangeRef = useRef(onReaderStateChange);
   const reportDiagnosticRef = useRef(reportDiagnostic);
   const remoteXPointerRef = useRef(remoteXPointer);
   const testBridgeRef = useRef(testBridge);
+  const chapterNavigationRequestIdRef = useRef<number | null>(null);
   const stateRef = useRef<FoliateReaderDomTestState>(EMPTY_STATE);
   const [state, setState] = useState<FoliateReaderDomTestState>(EMPTY_STATE);
-  const [activePanel, setActivePanel] = useState<ReaderPanelView | null>(null);
   const [activeImage, setActiveImage] = useState<ActiveReaderImage | null>(null);
 
   columnPreferenceRef.current = columnPreference;
   fontScaleRef.current = fontScale;
   loadBookRef.current = loadBook;
   onProgressChangedRef.current = onProgressChanged;
+  onReaderStateChangeRef.current = onReaderStateChange;
   reportDiagnosticRef.current = reportDiagnostic;
   remoteXPointerRef.current = remoteXPointer;
   testBridgeRef.current = testBridge;
   stateRef.current = state;
-
-  const updateFontScale = useCallback(
-    (nextFontScale: number) => {
-      const clamped = clampFontScale(nextFontScale);
-      onFontScaleChange(clamped);
-    },
-    [onFontScaleChange],
-  );
-
-  const toggleColumnPreference = useCallback(() => {
-    onColumnPreferenceChange(columnPreference === "single" ? "auto" : "single");
-  }, [columnPreference, onColumnPreferenceChange]);
 
   const logDiagnostic = useCallback((message: string) => {
     console.log(`[foliate-reader] ${message}`);
@@ -270,7 +266,6 @@ export default function FoliateReaderDom({
 
       try {
         await view.goTo(entry.href);
-        setActivePanel(null);
         patchState({ status: "" });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to open chapter.";
@@ -358,7 +353,6 @@ export default function FoliateReaderDom({
           logDiagnostic(
             `image: opening ${image.width ?? "unknown"}x${image.height ?? "unknown"} ${image.src.slice(0, 80)}`,
           );
-          setActivePanel(null);
           setActiveImage(image);
         });
 
@@ -483,184 +477,33 @@ export default function FoliateReaderDom({
     viewRef.current?.renderer?.setAttribute("max-column-count", getMaxColumnCount(columnPreference));
   }, [columnPreference]);
 
+  useEffect(() => {
+    onReaderStateChangeRef.current?.({
+      currentChapterLabel: state.currentChapterLabel,
+      currentHref: state.currentHref,
+      isReady: state.isReady,
+      tocEntries: state.tocEntries,
+    });
+  }, [state.currentChapterLabel, state.currentHref, state.isReady, state.tocEntries]);
+
+  useEffect(() => {
+    if (!chapterNavigationRequest) {
+      return;
+    }
+
+    if (chapterNavigationRequest.id === chapterNavigationRequestIdRef.current) {
+      return;
+    }
+
+    chapterNavigationRequestIdRef.current = chapterNavigationRequest.id;
+    void jumpToChapter(chapterNavigationRequest.index);
+  }, [chapterNavigationRequest, jumpToChapter]);
+
   return (
     <div style={styles.screen}>
-      <div style={styles.controlBar}>
-        <button
-          type="button"
-          aria-label="Reader settings"
-          aria-expanded={activePanel !== null}
-          onClick={() => setActivePanel((current) => (current ? null : "settings"))}
-          style={{
-            ...styles.settingsToggle,
-            ...(activePanel ? styles.settingsToggleActive : undefined),
-          }}
-        >
-          <GearIcon />
-        </button>
-      </div>
-
       <div data-testid="foliate-reader-viewport" ref={containerRef} style={styles.readerViewport} />
-
-      {activePanel ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close reader settings"
-            onClick={() => setActivePanel(null)}
-            style={styles.backdrop}
-          />
-          <aside style={styles.settingsSheet}>
-            <div style={styles.settingsSheetHeader}>
-              {activePanel === "chapters" ? (
-                <button
-                  type="button"
-                  onClick={() => setActivePanel("settings")}
-                  style={styles.panelHeaderButton}
-                >
-                  Back
-                </button>
-              ) : null}
-              <div style={styles.settingsSheetTitle}>
-                {activePanel === "chapters" ? "Chapters" : "Reader settings"}
-              </div>
-              <button type="button" onClick={() => setActivePanel(null)} style={styles.panelHeaderButton}>
-                Close
-              </button>
-            </div>
-            {activePanel === "settings" ? (
-              <div style={styles.settingsSheetBody}>
-                <div style={styles.settingSection}>
-                  <div style={styles.settingSectionTitle}>Text</div>
-                  <div style={styles.settingRow}>
-                    <div style={styles.settingRowText}>
-                      <div style={styles.settingRowTitle}>Font size</div>
-                      <div style={styles.settingRowSubtitle}>{Math.round(fontScale * 100)}%</div>
-                    </div>
-                    <div style={styles.fontControls} aria-label="Reader font scale controls">
-                      <button
-                        type="button"
-                        aria-label="Decrease font size"
-                        disabled={fontScale <= MIN_FONT_SCALE}
-                        onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
-                        style={{
-                          ...styles.fontButton,
-                          ...(fontScale <= MIN_FONT_SCALE ? styles.fontButtonDisabled : undefined),
-                        }}
-                      >
-                        A-
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Reset font size"
-                        onClick={() => updateFontScale(1)}
-                        style={styles.fontScaleText}
-                      >
-                        Reset
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Increase font size"
-                        disabled={fontScale >= MAX_FONT_SCALE}
-                        onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
-                        style={{
-                          ...styles.fontButton,
-                          ...(fontScale >= MAX_FONT_SCALE ? styles.fontButtonDisabled : undefined),
-                        }}
-                      >
-                        A+
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.settingSection}>
-                  <div style={styles.settingSectionTitle}>Layout</div>
-                  <div style={styles.settingRow}>
-                    <div style={styles.settingRowText}>
-                      <div style={styles.settingRowTitle}>Columns</div>
-                      <div style={styles.settingRowSubtitle}>
-                        {columnPreference === "single" ? "Single column" : "Automatic columns"}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      aria-label="Toggle single-column reader layout"
-                      aria-pressed={columnPreference === "single"}
-                      onClick={toggleColumnPreference}
-                      style={{
-                        ...styles.columnToggle,
-                        ...(columnPreference === "single" ? styles.columnToggleActive : undefined),
-                      }}
-                    >
-                      {columnPreference === "single" ? "1 col" : "Auto"}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={styles.settingSection}>
-                  <div style={styles.settingSectionTitle}>Book</div>
-                  <button
-                    type="button"
-                    onClick={() => setActivePanel("chapters")}
-                    style={styles.panelMenuRow}
-                  >
-                    <span style={styles.settingRowText}>
-                      <span style={styles.settingRowTitle}>Chapters</span>
-                      <span style={styles.settingRowSubtitle}>
-                        {state.currentChapterLabel ??
-                          (state.tocEntries.length > 0 ? `${state.tocEntries.length} chapters` : "No chapters")}
-                      </span>
-                    </span>
-                    <span style={styles.panelMenuChevron}>&gt;</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={styles.settingsSheetBody}>
-                {state.tocEntries.length > 0 ? (
-                  state.tocEntries.map((entry, index) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      onClick={() => void jumpToChapter(index)}
-                      style={{
-                        ...styles.tocItem,
-                        paddingLeft: `${16 + entry.depth * 14}px`,
-                      }}
-                    >
-                      {entry.label}
-                    </button>
-                  ))
-                ) : (
-                  <div style={styles.emptyToc}>This book does not expose a table of contents.</div>
-                )}
-              </div>
-            )}
-          </aside>
-        </>
-      ) : null}
-
       {activeImage ? <ImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
     </div>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-      style={styles.settingsIcon}
-    >
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
   );
 }
 
@@ -980,14 +823,6 @@ function getMidpoint(first: GesturePoint, second: GesturePoint) {
   };
 }
 
-function clampFontScale(fontScale: number) {
-  if (!Number.isFinite(fontScale)) {
-    return 1;
-  }
-
-  return Math.round(Math.min(Math.max(fontScale, MIN_FONT_SCALE), MAX_FONT_SCALE) * 100) / 100;
-}
-
 function getMaxColumnCount(columnPreference: ReaderColumnPreference) {
   return columnPreference === "single" ? "1" : "2";
 }
@@ -1076,7 +911,7 @@ async function getCfiFromXPointer(view: FoliateViewElement, xpointer: string) {
   return new XCFI(doc, spineIndex).xPointerToCFI(xpointer);
 }
 
-function flattenToc(items: FoliateBook["toc"] = [], depth = 0): TocEntry[] {
+function flattenToc(items: FoliateBook["toc"] = [], depth = 0): FoliateReaderTocEntry[] {
   return items.flatMap((item, index) => {
     const label = normalizeLabel(item.label) ?? "Untitled chapter";
     const href = item.href ?? "";
@@ -1085,14 +920,14 @@ function flattenToc(items: FoliateBook["toc"] = [], depth = 0): TocEntry[] {
   });
 }
 
-function findChapterLabel(entries: TocEntry[], href: string | null) {
+function findChapterLabel(entries: FoliateReaderTocEntry[], href: string | null) {
   if (!href) {
     return null;
   }
   return entries.find((entry) => entry.href === href)?.label ?? null;
 }
 
-function findChapterLabelForSection(entries: TocEntry[], href: string | null) {
+function findChapterLabelForSection(entries: FoliateReaderTocEntry[], href: string | null) {
   if (!href) {
     return null;
   }
@@ -1197,7 +1032,7 @@ async function waitForViewport(element: HTMLDivElement, timeoutMs = 2500) {
 async function ensureVisibleContent(
   view: FoliateViewElement,
   container: HTMLDivElement,
-  tocEntries: TocEntry[],
+  tocEntries: FoliateReaderTocEntry[],
   logDiagnostic: (message: string) => void,
 ) {
   let snapshot = getViewportSnapshot(container, view);
@@ -1254,200 +1089,10 @@ function getVisibleText(view: FoliateViewElement | null) {
 const styles: Record<string, CSSProperties> = {
   screen: {
     display: "flex",
-    flexDirection: "column",
     height: "100vh",
     overflow: "hidden",
     position: "relative",
     width: "100%",
-  },
-  controlBar: {
-    alignItems: "center",
-    display: "flex",
-    gap: "8px",
-    justifyContent: "flex-end",
-    padding: "8px",
-  },
-  settingsToggle: {
-    alignItems: "center",
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    color: FOLIATE_READER_THEME.foreground,
-    cursor: "pointer",
-    display: "flex",
-    height: "44px",
-    justifyContent: "center",
-    padding: 0,
-    width: "44px",
-  },
-  settingsToggleActive: {
-    borderColor: FOLIATE_READER_THEME.primary,
-    color: FOLIATE_READER_THEME.primaryMuted,
-  },
-  settingsIcon: {
-    display: "block",
-    height: "22px",
-    width: "22px",
-  },
-  columnToggle: {
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    color: FOLIATE_READER_THEME.foreground,
-    minWidth: "74px",
-    padding: "9px 12px",
-    whiteSpace: "nowrap",
-  },
-  columnToggleActive: {
-    borderColor: FOLIATE_READER_THEME.primary,
-    color: FOLIATE_READER_THEME.primaryMuted,
-  },
-  fontControls: {
-    alignItems: "center",
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    display: "flex",
-    overflow: "hidden",
-  },
-  fontButton: {
-    background: "transparent",
-    border: 0,
-    color: FOLIATE_READER_THEME.foreground,
-    cursor: "pointer",
-    minWidth: "42px",
-    padding: "8px",
-  },
-  fontButtonDisabled: {
-    color: FOLIATE_READER_THEME.disabledForeground,
-    cursor: "not-allowed",
-  },
-  fontScaleText: {
-    background: FOLIATE_READER_THEME.subtlePanelBackground,
-    border: 0,
-    borderLeft: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
-    borderRight: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
-    color: FOLIATE_READER_THEME.primaryMuted,
-    cursor: "pointer",
-    minWidth: "64px",
-    padding: "8px",
-  },
-  settingsSheet: {
-    background: FOLIATE_READER_THEME.sheetBackground,
-    borderTop: `1px solid ${FOLIATE_READER_THEME.sheetBorder}`,
-    bottom: 0,
-    display: "flex",
-    flexDirection: "column",
-    left: 0,
-    maxHeight: "78vh",
-    position: "absolute",
-    right: 0,
-    zIndex: 3,
-  },
-  settingsSheetHeader: {
-    alignItems: "center",
-    display: "flex",
-    gap: "8px",
-    justifyContent: "space-between",
-    padding: "10px 12px",
-  },
-  settingsSheetTitle: {
-    color: FOLIATE_READER_THEME.strongForeground,
-    flex: 1,
-    fontSize: "16px",
-    fontWeight: 700,
-  },
-  panelHeaderButton: {
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    color: FOLIATE_READER_THEME.foreground,
-    cursor: "pointer",
-    padding: "9px 12px",
-  },
-  settingsSheetBody: {
-    display: "flex",
-    flexDirection: "column",
-    overflow: "auto",
-    padding: "8px 16px 20px",
-  },
-  settingSection: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    padding: "8px 0",
-  },
-  settingSectionTitle: {
-    color: FOLIATE_READER_THEME.subtleForeground,
-    fontSize: "12px",
-    fontWeight: 800,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-  },
-  settingRow: {
-    alignItems: "center",
-    background: FOLIATE_READER_THEME.subtlePanelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
-    borderRadius: "16px",
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "12px",
-    justifyContent: "space-between",
-    padding: "12px",
-  },
-  settingRowText: {
-    display: "flex",
-    flex: 1,
-    flexDirection: "column",
-    gap: "3px",
-    minWidth: 0,
-  },
-  settingRowTitle: {
-    color: FOLIATE_READER_THEME.strongForeground,
-    fontSize: "15px",
-    fontWeight: 700,
-  },
-  settingRowSubtitle: {
-    color: FOLIATE_READER_THEME.subtleForeground,
-    fontSize: "13px",
-  },
-  panelMenuRow: {
-    alignItems: "center",
-    background: FOLIATE_READER_THEME.subtlePanelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
-    borderRadius: "16px",
-    color: FOLIATE_READER_THEME.foreground,
-    cursor: "pointer",
-    display: "flex",
-    gap: "12px",
-    justifyContent: "space-between",
-    padding: "12px",
-    textAlign: "left",
-    width: "100%",
-  },
-  panelMenuChevron: {
-    color: FOLIATE_READER_THEME.primaryMuted,
-    fontSize: "18px",
-    fontWeight: 700,
-  },
-  tocItem: {
-    background: "transparent",
-    border: 0,
-    borderRadius: "12px",
-    color: FOLIATE_READER_THEME.foreground,
-    padding: "8px",
-    textAlign: "left",
-  },
-  emptyToc: {
-    color: FOLIATE_READER_THEME.subtleForeground,
-    padding: "12px",
-  },
-  backdrop: {
-    background: FOLIATE_READER_THEME.backdropBackground,
-    border: 0,
-    inset: 0,
-    position: "absolute",
-    zIndex: 1,
   },
   imageLightbox: {
     background: FOLIATE_READER_THEME.lightboxBackground,
