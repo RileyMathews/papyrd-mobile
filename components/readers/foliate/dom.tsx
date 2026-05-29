@@ -17,23 +17,35 @@ import { FOLIATE_READER_THEME } from "@/components/readers/foliate/theme";
 import { XCFI } from "@/components/readers/foliate/xcfi";
 import type { ReaderColumnPreference } from "@/lib/settings";
 
-type TocEntry = {
+export type FoliateReaderTocEntry = {
   depth: number;
   href: string;
   id: string;
   label: string;
 };
 
+export type FoliateReaderState = {
+  currentChapterLabel: string | null;
+  currentHref: string | null;
+  isReady: boolean;
+  tocEntries: FoliateReaderTocEntry[];
+};
+
+export type FoliateReaderChapterNavigationRequest = {
+  id: number;
+  index: number;
+};
+
 type FoliateReaderDomProps = {
   bookTitle: string;
+  chapterNavigationRequest?: FoliateReaderChapterNavigationRequest | null;
   columnPreference: ReaderColumnPreference;
   fontScale: number;
   initialCfi?: string | null;
   remoteXPointer?: string | null;
   loadBook: () => Promise<string | Uint8Array | ArrayBuffer>;
-  onColumnPreferenceChange: (columnPreference: ReaderColumnPreference) => void;
-  onFontScaleChange: (fontScale: number) => void;
   onProgressChanged?: (progress: FoliateReaderProgress) => Promise<void>;
+  onReaderStateChange?: (state: FoliateReaderState) => void;
   reportDiagnostic: (message: string) => Promise<void>;
   dom?: import("expo/dom").DOMProps;
   testBridge?: {
@@ -86,7 +98,7 @@ export type FoliateReaderDomTestState = {
   isReady: boolean;
   progressFraction: number | null;
   status: string;
-  tocEntries: TocEntry[];
+  tocEntries: FoliateReaderTocEntry[];
 };
 
 export type FoliateReaderDomTestApi = {
@@ -167,19 +179,15 @@ const EMPTY_STATE: FoliateReaderDomTestState = {
   tocEntries: [],
 };
 
-const FONT_SCALE_STEP = 0.1;
-const MIN_FONT_SCALE = 0.8;
-const MAX_FONT_SCALE = 1.8;
-
 export default function FoliateReaderDom({
   bookTitle,
+  chapterNavigationRequest,
   columnPreference,
   fontScale,
   initialCfi,
   loadBook,
-  onColumnPreferenceChange,
-  onFontScaleChange,
   onProgressChanged,
+  onReaderStateChange,
   reportDiagnostic,
   remoteXPointer,
   testBridge,
@@ -190,34 +198,24 @@ export default function FoliateReaderDom({
   const fontScaleRef = useRef(fontScale);
   const loadBookRef = useRef(loadBook);
   const onProgressChangedRef = useRef(onProgressChanged);
+  const onReaderStateChangeRef = useRef(onReaderStateChange);
   const reportDiagnosticRef = useRef(reportDiagnostic);
   const remoteXPointerRef = useRef(remoteXPointer);
   const testBridgeRef = useRef(testBridge);
+  const chapterNavigationRequestIdRef = useRef<number | null>(null);
   const stateRef = useRef<FoliateReaderDomTestState>(EMPTY_STATE);
   const [state, setState] = useState<FoliateReaderDomTestState>(EMPTY_STATE);
-  const [showToc, setShowToc] = useState(false);
   const [activeImage, setActiveImage] = useState<ActiveReaderImage | null>(null);
 
   columnPreferenceRef.current = columnPreference;
   fontScaleRef.current = fontScale;
   loadBookRef.current = loadBook;
   onProgressChangedRef.current = onProgressChanged;
+  onReaderStateChangeRef.current = onReaderStateChange;
   reportDiagnosticRef.current = reportDiagnostic;
   remoteXPointerRef.current = remoteXPointer;
   testBridgeRef.current = testBridge;
   stateRef.current = state;
-
-  const updateFontScale = useCallback(
-    (nextFontScale: number) => {
-      const clamped = clampFontScale(nextFontScale);
-      onFontScaleChange(clamped);
-    },
-    [onFontScaleChange],
-  );
-
-  const toggleColumnPreference = useCallback(() => {
-    onColumnPreferenceChange(columnPreference === "single" ? "auto" : "single");
-  }, [columnPreference, onColumnPreferenceChange]);
 
   const logDiagnostic = useCallback((message: string) => {
     console.log(`[foliate-reader] ${message}`);
@@ -268,7 +266,6 @@ export default function FoliateReaderDom({
 
       try {
         await view.goTo(entry.href);
-        setShowToc(false);
         patchState({ status: "" });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to open chapter.";
@@ -356,7 +353,6 @@ export default function FoliateReaderDom({
           logDiagnostic(
             `image: opening ${image.width ?? "unknown"}x${image.height ?? "unknown"} ${image.src.slice(0, 80)}`,
           );
-          setShowToc(false);
           setActiveImage(image);
         });
 
@@ -481,100 +477,31 @@ export default function FoliateReaderDom({
     viewRef.current?.renderer?.setAttribute("max-column-count", getMaxColumnCount(columnPreference));
   }, [columnPreference]);
 
+  useEffect(() => {
+    onReaderStateChangeRef.current?.({
+      currentChapterLabel: state.currentChapterLabel,
+      currentHref: state.currentHref,
+      isReady: state.isReady,
+      tocEntries: state.tocEntries,
+    });
+  }, [state.currentChapterLabel, state.currentHref, state.isReady, state.tocEntries]);
+
+  useEffect(() => {
+    if (!chapterNavigationRequest) {
+      return;
+    }
+
+    if (chapterNavigationRequest.id === chapterNavigationRequestIdRef.current) {
+      return;
+    }
+
+    chapterNavigationRequestIdRef.current = chapterNavigationRequest.id;
+    void jumpToChapter(chapterNavigationRequest.index);
+  }, [chapterNavigationRequest, jumpToChapter]);
+
   return (
     <div style={styles.screen}>
-      <div style={styles.controlBar}>
-        <button
-          type="button"
-          onClick={() => setShowToc((current) => !current)}
-          style={styles.tocToggle}
-        >
-          {showToc ? "Hide chapters" : "Chapters"}
-        </button>
-        <div style={styles.readerControls}>
-          <button
-            type="button"
-            aria-label="Toggle single-column reader layout"
-            aria-pressed={columnPreference === "single"}
-            onClick={toggleColumnPreference}
-            style={{
-              ...styles.columnToggle,
-              ...(columnPreference === "single" ? styles.columnToggleActive : undefined),
-            }}
-          >
-            {columnPreference === "single" ? "1 col" : "Auto cols"}
-          </button>
-          <div style={styles.fontControls} aria-label="Reader font scale controls">
-            <button
-              type="button"
-              aria-label="Decrease font size"
-              disabled={fontScale <= MIN_FONT_SCALE}
-              onClick={() => updateFontScale(fontScale - FONT_SCALE_STEP)}
-              style={styles.fontButton}
-            >
-              A-
-            </button>
-            <button
-              type="button"
-              aria-label="Reset font size"
-              onClick={() => updateFontScale(1)}
-              style={styles.fontScaleText}
-            >
-              {Math.round(fontScale * 100)}%
-            </button>
-            <button
-              type="button"
-              aria-label="Increase font size"
-              disabled={fontScale >= MAX_FONT_SCALE}
-              onClick={() => updateFontScale(fontScale + FONT_SCALE_STEP)}
-              style={styles.fontButton}
-            >
-              A+
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div data-testid="foliate-reader-viewport" ref={containerRef} style={styles.readerViewport} />
-
-      {showToc ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close chapters"
-            onClick={() => setShowToc(false)}
-            style={styles.backdrop}
-          />
-          <aside style={styles.tocSheet}>
-            <div style={styles.tocSheetHeader}>
-              <div style={styles.tocSheetTitle}>Chapters</div>
-              <button type="button" onClick={() => setShowToc(false)} style={styles.tocToggle}>
-                Close
-              </button>
-            </div>
-            <div style={styles.tocSheetBody}>
-              {state.tocEntries.length > 0 ? (
-                state.tocEntries.map((entry, index) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => void jumpToChapter(index)}
-                    style={{
-                      ...styles.tocItem,
-                      paddingLeft: `${16 + entry.depth * 14}px`,
-                    }}
-                  >
-                    {entry.label}
-                  </button>
-                ))
-              ) : (
-                <div style={styles.emptyToc}>This book does not expose a table of contents.</div>
-              )}
-            </div>
-          </aside>
-        </>
-      ) : null}
-
       {activeImage ? <ImageLightbox image={activeImage} onClose={() => setActiveImage(null)} /> : null}
     </div>
   );
@@ -896,14 +823,6 @@ function getMidpoint(first: GesturePoint, second: GesturePoint) {
   };
 }
 
-function clampFontScale(fontScale: number) {
-  if (!Number.isFinite(fontScale)) {
-    return 1;
-  }
-
-  return Math.round(Math.min(Math.max(fontScale, MIN_FONT_SCALE), MAX_FONT_SCALE) * 100) / 100;
-}
-
 function getMaxColumnCount(columnPreference: ReaderColumnPreference) {
   return columnPreference === "single" ? "1" : "2";
 }
@@ -992,7 +911,7 @@ async function getCfiFromXPointer(view: FoliateViewElement, xpointer: string) {
   return new XCFI(doc, spineIndex).xPointerToCFI(xpointer);
 }
 
-function flattenToc(items: FoliateBook["toc"] = [], depth = 0): TocEntry[] {
+function flattenToc(items: FoliateBook["toc"] = [], depth = 0): FoliateReaderTocEntry[] {
   return items.flatMap((item, index) => {
     const label = normalizeLabel(item.label) ?? "Untitled chapter";
     const href = item.href ?? "";
@@ -1001,14 +920,14 @@ function flattenToc(items: FoliateBook["toc"] = [], depth = 0): TocEntry[] {
   });
 }
 
-function findChapterLabel(entries: TocEntry[], href: string | null) {
+function findChapterLabel(entries: FoliateReaderTocEntry[], href: string | null) {
   if (!href) {
     return null;
   }
   return entries.find((entry) => entry.href === href)?.label ?? null;
 }
 
-function findChapterLabelForSection(entries: TocEntry[], href: string | null) {
+function findChapterLabelForSection(entries: FoliateReaderTocEntry[], href: string | null) {
   if (!href) {
     return null;
   }
@@ -1113,7 +1032,7 @@ async function waitForViewport(element: HTMLDivElement, timeoutMs = 2500) {
 async function ensureVisibleContent(
   view: FoliateViewElement,
   container: HTMLDivElement,
-  tocEntries: TocEntry[],
+  tocEntries: FoliateReaderTocEntry[],
   logDiagnostic: (message: string) => void,
 ) {
   let snapshot = getViewportSnapshot(container, view);
@@ -1170,117 +1089,10 @@ function getVisibleText(view: FoliateViewElement | null) {
 const styles: Record<string, CSSProperties> = {
   screen: {
     display: "flex",
-    flexDirection: "column",
     height: "100vh",
     overflow: "hidden",
     position: "relative",
     width: "100%",
-  },
-  controlBar: {
-    alignItems: "center",
-    display: "flex",
-    gap: "8px",
-    justifyContent: "space-between",
-    padding: "8px",
-  },
-  readerControls: {
-    alignItems: "center",
-    display: "flex",
-    gap: "8px",
-    marginLeft: "auto",
-  },
-  columnToggle: {
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    color: FOLIATE_READER_THEME.foreground,
-    minWidth: "74px",
-    padding: "9px 12px",
-    whiteSpace: "nowrap",
-  },
-  columnToggleActive: {
-    borderColor: FOLIATE_READER_THEME.primary,
-    color: FOLIATE_READER_THEME.primaryMuted,
-  },
-  tocToggle: {
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-    color: FOLIATE_READER_THEME.foreground,
-    padding: "10px 14px",
-  },
-  fontControls: {
-    background: FOLIATE_READER_THEME.panelBackground,
-    border: `1px solid ${FOLIATE_READER_THEME.border}`,
-    borderRadius: "999px",
-  },
-  fontButton: {
-    background: "transparent",
-    border: 0,
-    color: FOLIATE_READER_THEME.foreground,
-    minWidth: "42px",
-    padding: "8px",
-  },
-  fontScaleText: {
-    background: FOLIATE_READER_THEME.subtlePanelBackground,
-    border: 0,
-    borderLeft: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
-    borderRight: `1px solid ${FOLIATE_READER_THEME.subtleBorder}`,
-    color: FOLIATE_READER_THEME.primaryMuted,
-    // cursor: "pointer",
-    // fontSize: "12px",
-    // fontWeight: 800,
-    minWidth: "52px",
-    padding: "8px",
-  },
-  tocSheet: {
-    background: FOLIATE_READER_THEME.sheetBackground,
-    borderTop: `1px solid ${FOLIATE_READER_THEME.sheetBorder}`,
-    bottom: 0,
-    // boxShadow: `0 -18px 40px ${FOLIATE_READER_THEME.sheetShadow}`,
-    display: "flex",
-    flexDirection: "column",
-    left: 0,
-    maxHeight: "72vh",
-    position: "absolute",
-    right: 0,
-    zIndex: 3,
-  },
-  tocSheetHeader: {
-    alignItems: "center",
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "8px",
-  },
-  tocSheetTitle: {
-    color: FOLIATE_READER_THEME.strongForeground,
-    fontSize: "16px",
-    fontWeight: 700,
-  },
-  tocSheetBody: {
-    display: "flex",
-    flexDirection: "column",
-    overflow: "auto",
-    padding: "16px",
-  },
-  tocItem: {
-    background: "transparent",
-    border: 0,
-    borderRadius: "12px",
-    color: FOLIATE_READER_THEME.foreground,
-    padding: "8px",
-    textAlign: "left",
-  },
-  emptyToc: {
-    color: FOLIATE_READER_THEME.subtleForeground,
-    padding: "12px",
-  },
-  backdrop: {
-    background: FOLIATE_READER_THEME.backdropBackground,
-    border: 0,
-    inset: 0,
-    position: "absolute",
-    zIndex: 1,
   },
   imageLightbox: {
     background: FOLIATE_READER_THEME.lightboxBackground,
