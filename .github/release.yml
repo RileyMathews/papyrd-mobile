@@ -5,7 +5,7 @@ changelog:
       - invalid
       - question
       - wontfix
-      - changelog: skip
+      - "changelog: skip"
 
   categories:
     - title: Breaking Changes
