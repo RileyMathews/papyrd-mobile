@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { File } from "expo-file-system";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 
 import FoliateReaderDom, {
   type FoliateReaderChapterNavigationRequest,
@@ -74,6 +75,23 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
   const pushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   bookRef.current = book;
+  const navigation = useNavigation();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          accessibilityLabel="Reader settings"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: activePanel !== null }}
+          onPress={() => setActivePanel("settings")}
+          style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
+        >
+          <Ionicons name="settings-outline" size={24} color="#e0f2fe" />
+        </Pressable>
+      ),
+    });
+  }, [activePanel, navigation]);
 
   const appendDiagnostic = useCallback(async (message: string) => {
     console.log(`[reader-foliate] ${message}`);
@@ -346,19 +364,6 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
           style: [styles.reader, { marginBottom: insets.bottom }],
         }}
       />
-      <Pressable
-        accessibilityLabel="Reader settings"
-        accessibilityRole="button"
-        accessibilityState={{ expanded: activePanel !== null }}
-        onPress={() => setActivePanel("settings")}
-        style={({ pressed }) => [
-          styles.settingsButton,
-          activePanel !== null && styles.settingsButtonActive,
-          pressed && styles.settingsButtonPressed,
-        ]}
-      >
-        <Ionicons name="settings-outline" size={24} color="#e0f2fe" />
-      </Pressable>
       <ReaderSettingsPanel
         activePanel={activePanel}
         bottomInset={insets.bottom}
@@ -663,26 +668,14 @@ const styles = StyleSheet.create({
     backgroundColor: FOLIATE_READER_THEME.background,
     flex: 1,
   },
-  settingsButton: {
+  headerButton: {
     alignItems: "center",
-    backgroundColor: FOLIATE_READER_THEME.panelBackground,
-    borderColor: FOLIATE_READER_THEME.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    elevation: 12,
-    height: 44,
     justifyContent: "center",
-    position: "absolute",
-    right: 8,
-    top: 8,
-    width: 44,
-    zIndex: 12,
+    marginRight: 8,
+    padding: 8,
   },
-  settingsButtonActive: {
-    borderColor: FOLIATE_READER_THEME.primary,
-  },
-  settingsButtonPressed: {
-    opacity: 0.82,
+  headerButtonPressed: {
+    opacity: 0.6,
   },
   panelOverlay: {
     backgroundColor: "transparent",
