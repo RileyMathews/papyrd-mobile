@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -67,9 +68,19 @@ jobs:
           asset_tag="${GITHUB_REF_NAME//\//-}"
 
           test -f "$apk_path"
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --fail-on-no-commits
-          gh release upload "$GITHUB_REF_NAME" "$apk_path#Papyrd-${asset_tag}.apk"
+          tag_note="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release already exists; leaving notes unchanged."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" \
+              --notes "$tag_note" \
+              --generate-notes \
+              --fail-on-no-commits
+          fi
+
+          gh release upload "$GITHUB_REF_NAME" "$apk_path#Papyrd-${asset_tag}.apk" --clobber
 
   ios-internal:
     name: iOS Internal
