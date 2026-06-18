@@ -38,9 +38,11 @@ import {
 
 type FoliateReaderScreenProps = {
   bookId: string;
+  title?: string;
 };
 
 type ReaderPanelView = "settings" | "chapters";
+type StartupSyncStatus = "idle" | "syncing" | "error";
 
 const KOSYNC_PUSH_DEBOUNCE_MS = 5000;
 const READER_FONT_SCALE_STEP = 0.1;
@@ -52,11 +54,12 @@ const EMPTY_READER_STATE: FoliateReaderState = {
   tocEntries: [],
 };
 
-export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
+export function FoliateReaderScreen({ bookId, title }: FoliateReaderScreenProps) {
   const insets = useSafeAreaInsets();
   const [book, setBook] = useState<LocalBook | null>(null);
   const [initialCfi, setInitialCfi] = useState<string | null>(null);
   const [remoteXPointer, setRemoteXPointer] = useState<string | null>(null);
+  const [startupSyncStatus, setStartupSyncStatus] = useState<StartupSyncStatus>("idle");
   const [readerSettings, setReaderSettings] = useState<ReaderSettings>({
     columnPreference: "auto",
     fontScale: 1,
@@ -79,6 +82,12 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerTitle: () => (
+        <ReaderHeaderTitle
+          status={startupSyncStatus}
+          title={book?.title ?? title ?? "Foliate Reader"}
+        />
+      ),
       headerRight: () => (
         <Pressable
           accessibilityLabel="Reader settings"
@@ -91,7 +100,7 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
         </Pressable>
       ),
     });
-  }, [activePanel, navigation]);
+  }, [activePanel, book?.title, navigation, startupSyncStatus, title]);
 
   const appendDiagnostic = useCallback(async (message: string) => {
     console.log(`[reader-foliate] ${message}`);
@@ -177,7 +186,6 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
           return;
         }
 
-        const documentHash = await getLocalBookDocumentHash(localBook);
         const [settings, localProgress] = await Promise.all([
           getAppSettings(),
           getLocalReaderProgress(localBook.id),
@@ -188,21 +196,53 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
         void appendDiagnostic(
           `kosync: local progress ${localProgress ? `cfi=${localProgress.cfi} xpointer=${localProgress.xpointer ?? "missing"} updatedAt=${localProgress.updatedAt}` : "missing"}`,
         );
-        void appendDiagnostic(`kosync: document hash ${documentHash ?? "missing"}`);
-        const remoteProgress = await getRemoteProgress(
-          documentHash,
-          settings.kosync,
-          localProgress,
-          appendDiagnostic,
-        );
 
-        documentHashRef.current = documentHash;
+        documentHashRef.current = null;
         settingsRef.current = settings.kosync;
         setReaderSettings(settings.reader);
         setBook(localBook);
         setInitialCfi(localProgress?.cfi ?? null);
-        setRemoteXPointer(remoteProgress);
+        setRemoteXPointer(null);
+        setStartupSyncStatus("idle");
         void appendDiagnostic(`native: loaded metadata for ${localBook.title}`);
+
+        if (canAttemptKosync(settings.kosync)) {
+          setStartupSyncStatus("syncing");
+          void (async () => {
+            try {
+              void appendDiagnostic("kosync: hashing document for startup sync");
+              const documentHash = await getLocalBookDocumentHash(localBook);
+
+              if (!isActive) {
+                return;
+              }
+
+              documentHashRef.current = documentHash;
+              void appendDiagnostic(`kosync: document hash ${documentHash ?? "missing"}`);
+              const remoteProgress = await getRemoteProgress(
+                documentHash,
+                settings.kosync,
+                localProgress,
+                appendDiagnostic,
+              );
+
+              if (!isActive) {
+                return;
+              }
+
+              setRemoteXPointer(remoteProgress.progress);
+              setStartupSyncStatus(remoteProgress.errorMessage ? "error" : "idle");
+            } catch (error) {
+              if (!isActive) {
+                return;
+              }
+
+              const message = error instanceof Error ? error.message : "Failed to sync KOSync progress.";
+              void appendDiagnostic(`native: failed to prepare KOSync startup sync (${message})`);
+              setStartupSyncStatus("error");
+            }
+          })();
+        }
       } catch (error) {
         if (!isActive) {
           return;
@@ -211,6 +251,7 @@ export function FoliateReaderScreen({ bookId }: FoliateReaderScreenProps) {
         const message = error instanceof Error ? error.message : "Failed to load this local book.";
         setBook(null);
         setErrorMessage(message);
+        setStartupSyncStatus("idle");
         void appendDiagnostic(`native: failed to load local book (${message})`);
       } finally {
         if (isActive) {
@@ -400,6 +441,37 @@ type ReaderSettingsPanelProps = {
   onSelectChapter: (index: number) => void;
   tocEntries: FoliateReaderTocEntry[];
 };
+
+function ReaderHeaderTitle({ status, title }: { status: StartupSyncStatus; title: string }) {
+  if (status === "syncing") {
+    return (
+      <View style={styles.headerTitleContainer}>
+        <ActivityIndicator color={FOLIATE_READER_THEME.primaryMuted} size="small" />
+        <Text numberOfLines={1} style={styles.headerSyncText}>
+          Attempting sync with KOSync
+        </Text>
+      </View>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <View style={styles.headerTitleContainer}>
+        <Text numberOfLines={1} style={[styles.headerSyncText, styles.headerSyncErrorText]}>
+          Error syncing with KOSync
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.headerTitleContainer}>
+      <Text numberOfLines={1} style={styles.headerTitleText}>
+        {title}
+      </Text>
+    </View>
+  );
+}
 
 function ReaderSettingsPanel({
   activePanel,
@@ -628,7 +700,7 @@ async function getRemoteProgress(
     await appendDiagnostic(
       `kosync: pull skipped (enabled=${String(settings.enabled)}, documentHash=${documentHash ?? "missing"})`,
     );
-    return null;
+    return { progress: null, errorMessage: null };
   }
 
   try {
@@ -639,23 +711,27 @@ async function getRemoteProgress(
       await appendDiagnostic(
         `kosync: no usable remote progress (${remote?.progress ? `progress=${remote.progress}` : "empty response"})`,
       );
-      return null;
+      return { progress: null, errorMessage: null };
     }
 
     if (!localProgress || remote.progress !== localProgress.xpointer) {
       await appendDiagnostic(
         `kosync: remote progress differs; applying server progress=${remote.progress} percentage=${remote.percentage ?? "unknown"} timestamp=${remote.timestamp ?? "unknown"}`,
       );
-      return remote.progress;
+      return { progress: remote.progress, errorMessage: null };
     }
 
     await appendDiagnostic("kosync: remote progress matches local progress; no jump needed");
-    return null;
+    return { progress: null, errorMessage: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to pull KOSync progress.";
     await appendDiagnostic(`native: failed to pull KOSync progress (${message})`);
-    return null;
+    return { progress: null, errorMessage: message };
   }
+}
+
+function canAttemptKosync(settings: KosyncSettings) {
+  return Boolean(settings.enabled && settings.serverUrl && settings.username && settings.userkey);
 }
 
 const styles = StyleSheet.create({
@@ -676,6 +752,27 @@ const styles = StyleSheet.create({
   },
   headerButtonPressed: {
     opacity: 0.6,
+  },
+  headerTitleContainer: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    justifyContent: "center",
+    minWidth: 0,
+  },
+  headerTitleText: {
+    color: FOLIATE_READER_THEME.strongForeground,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  headerSyncText: {
+    color: FOLIATE_READER_THEME.primaryMuted,
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  headerSyncErrorText: {
+    color: "#fca5a5",
   },
   panelOverlay: {
     backgroundColor: "transparent",

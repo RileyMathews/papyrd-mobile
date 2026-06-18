@@ -15,6 +15,8 @@ type KosyncRequestOptions = {
   useAuth?: boolean;
 };
 
+const KOSYNC_REQUEST_TIMEOUT_MS = 5000;
+
 export class KosyncClient {
   private readonly settings: KosyncSettings;
 
@@ -120,11 +122,25 @@ export class KosyncClient {
       headers["X-Auth-Key"] = userkey;
     }
 
-    return fetch(`${this.settings.serverUrl}${endpoint}`, {
-      method,
-      headers,
-      body: body == null ? undefined : JSON.stringify(body),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), KOSYNC_REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(`${this.settings.serverUrl}${endpoint}`, {
+        method,
+        headers,
+        body: body == null ? undefined : JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("KOSync request timed out.");
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 

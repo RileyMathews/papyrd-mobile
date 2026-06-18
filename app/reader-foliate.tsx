@@ -4,6 +4,7 @@ import { FoliateReaderScreen } from "@/components/readers/foliate/screen";
 
 export default function FoliateReaderRoute() {
   const params = useLocalSearchParams<{ bookId?: string; title?: string }>();
+  const title = params.title ?? "Foliate Reader";
 
   if (!params.bookId) {
     return null;
@@ -11,8 +12,8 @@ export default function FoliateReaderRoute() {
 
   return (
     <>
-      <Stack.Screen options={{ title: params.title ?? "Foliate Reader" }} />
-      <FoliateReaderScreen bookId={params.bookId} />
+      <Stack.Screen options={{ title }} />
+      <FoliateReaderScreen bookId={params.bookId} title={title} />
     </>
   );
 }
