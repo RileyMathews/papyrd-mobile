@@ -201,6 +201,7 @@ export default function FoliateReaderDom({
   const onReaderStateChangeRef = useRef(onReaderStateChange);
   const reportDiagnosticRef = useRef(reportDiagnostic);
   const remoteXPointerRef = useRef(remoteXPointer);
+  const appliedRemoteXPointerRef = useRef<string | null>(null);
   const testBridgeRef = useRef(testBridge);
   const chapterNavigationRequestIdRef = useRef<number | null>(null);
   const stateRef = useRef<FoliateReaderDomTestState>(EMPTY_STATE);
@@ -225,6 +226,32 @@ export default function FoliateReaderDom({
   const patchState = useCallback((patch: Partial<FoliateReaderDomTestState>) => {
     setState((current) => ({ ...current, ...patch }));
   }, []);
+
+  const applyRemoteXPointer = useCallback(
+    async (view: FoliateViewElement, xpointer: string, source: "startup" | "sync") => {
+      if (appliedRemoteXPointerRef.current === xpointer) {
+        return;
+      }
+
+      appliedRemoteXPointerRef.current = xpointer;
+
+      try {
+        logDiagnostic(`kosync: converting remote XPointer ${xpointer}`);
+        const remoteCfi = await getCfiFromXPointer(view, xpointer);
+        logDiagnostic(`kosync: remote XPointer converted to CFI ${remoteCfi}`);
+        await view.goTo(remoteCfi);
+        logDiagnostic(
+          source === "startup"
+            ? "startup: applied remote KOSync progress"
+            : "kosync: applied remote KOSync progress",
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        logDiagnostic(`${source}: failed to apply remote KOSync progress (${message})`);
+      }
+    },
+    [logDiagnostic],
+  );
 
   const turnPage = useCallback(
     async (direction: "prev" | "next") => {
@@ -281,6 +308,7 @@ export default function FoliateReaderDom({
     let teardownResizeObserver: (() => void) | undefined;
     let teardownImageTapListeners: (() => void) | undefined;
     let removeRelocateListener: (() => void) | undefined;
+    appliedRemoteXPointerRef.current = null;
 
     async function mountReader() {
       patchState({ ...EMPTY_STATE, status: "Opening book..." });
@@ -388,16 +416,7 @@ export default function FoliateReaderDom({
         await waitForInitialDisplay;
 
         if (remoteXPointerRef.current?.startsWith("/body")) {
-          try {
-            logDiagnostic(`kosync: converting remote XPointer ${remoteXPointerRef.current}`);
-            const remoteCfi = await getCfiFromXPointer(view, remoteXPointerRef.current);
-            logDiagnostic(`kosync: remote XPointer converted to CFI ${remoteCfi}`);
-            await view.goTo(remoteCfi);
-            logDiagnostic("startup: applied remote KOSync progress");
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "unknown error";
-            logDiagnostic(`startup: failed to apply remote KOSync progress (${message})`);
-          }
+          await applyRemoteXPointer(view, remoteXPointerRef.current, "startup");
         }
 
         const resizeObserver = new ResizeObserver(() => {
@@ -467,7 +486,17 @@ export default function FoliateReaderDom({
       testBridgeRef.current?.onDispose?.();
       logDiagnostic("shutdown: reader disposed");
     };
-  }, [bookTitle, initialCfi, jumpToChapter, logDiagnostic, patchState, turnPage]);
+  }, [applyRemoteXPointer, bookTitle, initialCfi, jumpToChapter, logDiagnostic, patchState, turnPage]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+
+    if (!view || !state.isReady || !remoteXPointer?.startsWith("/body")) {
+      return;
+    }
+
+    void applyRemoteXPointer(view, remoteXPointer, "sync");
+  }, [applyRemoteXPointer, remoteXPointer, state.isReady]);
 
   useEffect(() => {
     viewRef.current?.renderer?.setStyles?.(buildFoliateInjectedCss(fontScale));
