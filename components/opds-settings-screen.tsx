@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
+import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet } from "react-native";
 
 import { DSButton, ButtonBackgroundColor } from "@/components/ds/button";
 import { DSCard } from "@/components/ds/card";
 import { DSField } from "@/components/ds/field";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
 import { SimpleScreen } from "@/components/simple-screen";
+import { fetchOpdsFeed } from "@/lib/opds";
 import {
   createOpdsServerSettings,
   getAppSettings,
@@ -132,6 +133,7 @@ function OpdsServerCard({
   const [draft, setDraft] = useState(server);
   const [isSaving, setIsSaving] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
     setDraft(server);
@@ -155,11 +157,42 @@ function OpdsServerCard({
     }
   }
 
+  async function handleTestConnection() {
+    const testServer = {
+      ...draft,
+      baseUrl: draft.baseUrl.trim(),
+    };
+
+    if (!testServer.baseUrl) {
+      Alert.alert("Connection failed", "Enter an OPDS URL before testing.");
+      return;
+    }
+
+    setIsTesting(true);
+
+    try {
+      const feed = await fetchOpdsFeed(testServer, testServer.baseUrl);
+      Alert.alert(
+        "Connection OK",
+        feed.metadata?.title
+          ? `Loaded OPDS root feed: ${feed.metadata.title}`
+          : "Loaded the OPDS root feed.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Connection failed",
+        error instanceof Error ? error.message : "Unable to load the OPDS root feed.",
+      );
+    } finally {
+      setIsTesting(false);
+    }
+  }
+
   return (
     <DSCard>
       <DSText size={TextSize.Large}>{title}</DSText>
       <DSButton
-        disabled={isRemoving}
+        disabled={isSaving || isRemoving || isTesting}
         onPress={() => void handleRemove()}
         backgroundColor={ButtonBackgroundColor.Danger}
         title={isRemoving ? "Removing..." : "Remove"}
@@ -194,7 +227,14 @@ function OpdsServerCard({
       />
 
       <DSButton
-        disabled={isSaving || isRemoving}
+        disabled={isSaving || isRemoving || isTesting}
+        onPress={() => void handleTestConnection()}
+        backgroundColor={ButtonBackgroundColor.Secondary}
+        title={isTesting ? "Testing..." : "Test connection"}
+      />
+
+      <DSButton
+        disabled={isSaving || isRemoving || isTesting}
         onPress={() => void handleSave()}
         title={isSaving ? "Saving..." : "Save this server"}
       />
