@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Pressable } from "react-native";
+import { Alert, Linking, Pressable } from "react-native";
 import { router } from "expo-router";
 
 import { DSCard } from "@/components/ds/card";
@@ -7,6 +7,14 @@ import { DSScreen } from "@/components/ds/screen";
 import { DSText, TextColor, TextSize } from "@/components/ds/text";
 
 export function SettingsScreen() {
+  const openProjectPage = async (page: string) => {
+    try {
+      await Linking.openURL(`https://github.com/RileyMathews/papyrd-mobile/blob/main/docs/${page}.md`);
+    } catch {
+      Alert.alert("Unable to open page", "Please visit github.com/RileyMathews/papyrd-mobile for privacy information and support.");
+    }
+  };
+
   return (
     <DSScreen>
       <DSText size={TextSize.XLarge}>Settings</DSText>
@@ -26,6 +34,18 @@ export function SettingsScreen() {
         subtitle="Configure KOReader-compatible progress sync."
         onPress={() => router.push("/settings/kosync")}
       />
+      <SettingsRow
+        icon="shield-checkmark-outline"
+        title="Privacy policy"
+        subtitle="Local storage and connections to your chosen servers."
+        onPress={() => void openProjectPage("privacy-policy")}
+      />
+      <SettingsRow
+        icon="help-circle-outline"
+        title="Support"
+        subtitle="Setup help and contact the maintainer."
+        onPress={() => void openProjectPage("support")}
+      />
     </DSScreen>
   );
 }
@@ -44,6 +64,8 @@ function SettingsRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
     >
       <DSCard>
         <Ionicons name={icon} size={24} color="#7dd3fc" />

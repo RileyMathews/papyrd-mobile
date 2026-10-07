@@ -271,15 +271,17 @@ def build_signed_ios_app(api_key:)
       "PROVISIONING_PROFILE_SPECIFIER=#{Shellwords.escape(ENV.fetch('IOS_PROVISIONING_PROFILE_NAME'))}",
     ].join(" "),
   )
+
+  { ipa: lane_context[SharedValues::IPA_OUTPUT_PATH], version: version, build_number: next_build_number.to_s }
 end
 
-def upload_ios_build_to_testflight(api_key:, ipa:, distribute_to_groups: false)
+def upload_ios_build_to_testflight(api_key:, ipa:, distribute_to_groups: false, wait_for_processing: false)
   options = {
     api_key: api_key,
     app_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
     ipa: ipa,
     uses_non_exempt_encryption: false,
-    skip_waiting_for_build_processing: ENV.fetch("CI", "").casecmp("true").zero?,
+    skip_waiting_for_build_processing: !wait_for_processing && ENV.fetch("CI", "").casecmp("true").zero?,
   }
 
   options[:apple_id] = ENV["ASC_APP_ID"] unless ENV.fetch("ASC_APP_ID", "").empty?
@@ -301,12 +303,44 @@ def next_android_version_code(json_key)
       json_key: json_key,
       track: track,
     )
-  rescue StandardError => error
-    UI.important("Could not read #{track} version codes: #{error.message}")
-    []
   end
 
   (version_codes.max || 0) + 1
+end
+
+def with_ios_api_key
+  release_env = parse_dotenv(decrypt_sops("secrets/ios-release.env.enc", input_type: "dotenv"))
+  release_env.each { |key, value| ENV[key] = value }
+  key = JSON.parse(decrypt_sops("secrets/app-store-connect-api-key.json.enc", input_type: "json"))
+  api_key = app_store_connect_api_key(
+    key_id: key.fetch("key_id"),
+    issuer_id: key.fetch("issuer_id"),
+    key_content: key.fetch("key"),
+    duration: key.fetch("duration", 1200),
+    in_house: key.fetch("in_house", false),
+  )
+  yield(api_key)
+end
+
+def submit_ios_build(api_key:, version:, build_number:)
+  UI.user_error!("version must be major.minor.patch") unless /\A(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\z/.match?(version.to_s)
+  UI.user_error!("An exact positive build_number is required") unless /\A[1-9]\d*\z/.match?(build_number.to_s)
+
+  upload_to_app_store(
+    api_key: api_key,
+    app_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
+    app_version: version,
+    build_number: build_number.to_s,
+    skip_binary_upload: true,
+    skip_metadata: true,
+    skip_screenshots: true,
+    submit_for_review: true,
+    automatic_release: true,
+    phased_release: false,
+    force: true,
+    precheck_include_in_app_purchases: false,
+  )
+  UI.success("Submitted iOS #{version} (#{build_number}) for App Review; approval and public availability are not yet confirmed.")
 end
 
 def build_signed_android_closed_release(google_key:)
@@ -369,29 +403,46 @@ platform :ios do
   desc "Build and upload a signed iOS IPA to TestFlight for internal testing"
   lane :internal do
     with_ios_release_secrets do |api_key|
-      ipa = build_signed_ios_app(api_key: api_key)
+      build = build_signed_ios_app(api_key: api_key)
 
       upload_ios_build_to_testflight(
         api_key: api_key,
-        ipa: ipa,
+        ipa: build.fetch(:ipa),
       )
+      UI.success("Uploaded iOS #{build.fetch(:version)} (#{build.fetch(:build_number)}) to TestFlight; not submitted for public App Review.")
     end
   end
 
-  desc "Build and upload a signed iOS IPA to App Store Connect/TestFlight"
-  lane :production do
+  desc "Build, upload, and submit the exact iOS build for automatic full release after approval"
+  lane :production do |options|
+    # Retrying submission must reuse the known uploaded build, never rebuild it.
+    if options[:build_number]
+      with_ios_api_key do |api_key|
+        submit_ios_build(api_key: api_key, version: options[:version] || expo_marketing_version, build_number: options[:build_number])
+      end
+      next
+    end
+
+    UI.user_error!("A CI retry must use ios submit_review version:... build_number:...; refusing a duplicate upload") if ENV.fetch("GITHUB_RUN_ATTEMPT", "1").to_i > 1
     with_ios_release_secrets do |api_key|
-      ipa = build_signed_ios_app(api_key: api_key)
+      build = build_signed_ios_app(api_key: api_key)
+
+      UI.message("Resume submission with: bundle exec fastlane ios submit_review version:#{build.fetch(:version)} build_number:#{build.fetch(:build_number)}")
 
       upload_ios_build_to_testflight(
         api_key: api_key,
-        ipa: ipa,
+        ipa: build.fetch(:ipa),
+        wait_for_processing: true,
       )
+      UI.success("Uploaded and processed iOS #{build.fetch(:version)} (#{build.fetch(:build_number)}); submitting for review next.")
+      submit_ios_build(api_key: api_key, version: build.fetch(:version), build_number: build.fetch(:build_number))
     end
   end
 
   desc "Submit an already uploaded iOS build for App Review"
-  lane :submit_review do
-    UI.user_error!("submit_review is deferred until App Store review metadata is configured")
+  lane :submit_review do |options|
+    with_ios_api_key do |api_key|
+      submit_ios_build(api_key: api_key, version: options[:version] || expo_marketing_version, build_number: options[:build_number])
+    end
   end
 end
