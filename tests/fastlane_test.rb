@@ -33,14 +33,19 @@ class ReleaseTest < Minitest::Test
 
   def test_exact_build_submission_has_full_automatic_release_and_no_reupload
     captured = nil
-    @runner.define_singleton_method(:upload_to_app_store) { |**options| captured = options }
+    @runner.define_singleton_method(:upload_to_app_store) do |**options|
+      captured = options
+      raise "Metadata directory must exist and be empty" unless Dir.exist?(options.fetch(:metadata_path)) && Dir.children(options.fetch(:metadata_path)).empty?
+    end
     @runner.send(:submit_ios_build, api_key: :test, version: "1.0.0", build_number: "2")
     assert_equal "1.0.0", captured.fetch(:app_version)
     assert_equal "2", captured.fetch(:build_number)
-    %i[submit_for_review automatic_release skip_binary_upload skip_metadata skip_screenshots].each do |key|
+    %i[submit_for_review automatic_release skip_binary_upload skip_screenshots].each do |key|
       assert_equal true, captured.fetch(key)
     end
     assert_equal false, captured.fetch(:phased_release)
+    assert_equal false, captured.fetch(:skip_metadata), "Deliver must run the release-settings metadata step"
+    refute Dir.exist?(captured.fetch(:metadata_path)), "Temporary metadata must be cleaned up"
     assert_equal false, captured.fetch(:precheck_include_in_app_purchases)
   end
 
