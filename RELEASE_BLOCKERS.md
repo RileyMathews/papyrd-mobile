@@ -98,8 +98,8 @@ production eligibility.
 | App Store app ID | `6763586382` |
 | Public version | `1.0.0`, Prepare for Submission |
 | App Review | No submitted items |
-| Latest TestFlight build | `0.0.18 (1)`, Testing, internal and external groups |
-| Build attached to public version | None |
+| Latest TestFlight build | `1.0.0 (1)`, processed, Ready to Submit; internal groups Internal testers and Team (Expo) |
+| Build attached to public version | `1.0.0 (1)` |
 | Release setting | Automatically release this version |
 | Free Apps Agreement | Active, September 7, 2026 through April 23, 2027 |
 | Updated developer license warning | Resolved after Account Holder acceptance |
@@ -109,8 +109,8 @@ production eligibility.
 | Primary category | Books |
 | Age rating | 4+ globally, with regional exceptions; not Made for Kids |
 
-TestFlight approval does not replace public App Store review. The existing public
-draft version and latest uploaded build have different marketing versions.
+TestFlight approval does not replace public App Store review. The new public draft
+and candidate upload now both use `1.0.0`; older `0.0.18` builds are not candidates.
 
 ### Required Checklist, In Recommended Order
 
@@ -126,15 +126,32 @@ draft version and latest uploaded build have different marketing versions.
 - [x] **10. Provide search keywords.** Saved ebook/EPUB/reader/OPDS/KOSync/self-hosted/offline/library keywords.
 - [x] **11. Provide a public support URL.** Saved publicly accessible `https://github.com/RileyMathews/papyrd-mobile/blob/main/docs/support.md`; setup instructions and maintainer contact via GitHub issues/email. Also linked in app Settings.
 - [x] **12. Provide copyright information.** Saved `2026 Riley Mathews`.
-- [ ] **13. Upload iPhone screenshots.** Currently zero. The displayed 6.5-inch slot accepts portrait `1242 x 2688` or `1284 x 2778`, or their landscape equivalents.
+- [ ] **13. Upload iPhone screenshots.** Currently zero. October console now displays an iPhone Dynamic Island medium-display slot accepting portrait `1179 x 2556` or `1206 x 2622`, or their landscape equivalents. Capture genuine app-in-use screenshots; do not resize Android screenshots and present them as iOS.
 - [ ] **14. Upload iPad screenshots.** Required for the supported iPad device family; currently zero. The displayed 13-inch slot accepts portrait `2064 x 2752` or `2048 x 2732`, or their landscape equivalents.
-- [ ] **15. Fill App Review contact information.** First name, last name, phone number, and email are empty.
-- [ ] **16. Fill App Review sign-in information and instructions.** Sign-in required is checked, but username/password and Notes are empty. Supply the reviewer access prepared above, or correct the sign-in requirement if it genuinely does not apply.
+- [x] **15. Fill App Review contact information.** Reused the Account Holder's existing TestFlight review contact details; verified all four fields persist after reload. Personal phone number is not duplicated in this public document.
+- [x] **16. Fill App Review sign-in information and instructions.** Sign-in required unchecked because the static OPDS demo requires no credentials. Saved step-by-step setup, download, reading, and offline-test notes pointing to the public demo catalog; verified Notes persist after reload. Optional KOSync is disabled by default and not required for demo reading.
 - [x] **17. Set an explicit free price.** Set US base price to $0.00 and comparable free prices in all 175 regions. Paid Apps Agreement is not needed.
 - [x] **18. Configure country/region availability.** Public App Store distribution; all regions except China mainland selected. Future-region availability enabled. These are available on release, not live yet.
-- [ ] **19. Upload and attach the matching release build.** Wait for processing and resolve any build-specific compliance errors. Verify the existing non-exempt-encryption declaration remains accurate; separate documentation is only needed if the actual encryption usage requires it.
+- [x] **19. Upload and attach the matching release build.** CI uploaded `1.0.0 (1)` successfully in [run 37559426861](https://github.com/RileyMathews/papyrd-mobile/actions/runs/37559426861); processing completed and that exact build was attached to public version `1.0.0`. No missing-compliance prompt appeared. The build retains `ITSAppUsesNonExemptEncryption=false` for OS-provided HTTPS; no custom encryption was added.
 - [ ] **20. Implement and verify the production Fastlane lane.** Implemented exact-build `upload_to_app_store` submission with `submit_for_review: true`, `automatic_release: true`, and `phased_release: false`; local helper tests pass. Still requires a real CI submission to verify API-key permissions. See `docs/apple-release.md`.
-- [ ] **21. Run final submission validation and submit for App Review.** Resolve any additional requirements surfaced once the metadata and build are complete. Keep automatic release selected and confirm public availability after approval.
+- [ ] **21. Run final submission validation and submit for App Review.** After attaching `1.0.0 (1)`, Add for Review validation reports exactly two missing items: a 13-inch iPad screenshot and an iPhone Dynamic Island medium-display screenshot. Native demo verification is also still required before actual submission. No App Review item has been submitted; automatic release remains selected.
+
+### Next User Unblock
+
+Install **1.0.0 (1)** through the existing internal TestFlight groups and follow
+the public demo instructions in `docs/review-demo/README.md`. Confirm that adding
+the catalog, downloading the original sample EPUB, opening both chapters, and
+reopening the downloaded book offline work on iOS.
+
+Provide genuine app-in-use screenshots of the candidate, at least one each:
+
+- iPhone Dynamic Island medium display: portrait **1179 × 2556** or **1206 × 2622**.
+- iPad 13-inch display: portrait **2064 × 2752** or **2048 × 2732**.
+
+Their landscape equivalents are also accepted. Do not substitute resized Android
+screenshots. Once the native check and screenshots are ready, upload them, resume
+submission of the existing build (do not upload another one), verify the CI API
+key's submission permissions, and only then enable production release tags.
 
 ### Already Completed
 

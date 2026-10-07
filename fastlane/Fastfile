@@ -4,6 +4,7 @@ require "open3"
 require "securerandom"
 require "shellwords"
 require "tempfile"
+require "tmpdir"
 
 default_platform(:android)
 
@@ -326,20 +327,27 @@ def submit_ios_build(api_key:, version:, build_number:)
   UI.user_error!("version must be major.minor.patch") unless /\A(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)\z/.match?(version.to_s)
   UI.user_error!("An exact positive build_number is required") unless /\A[1-9]\d*\z/.match?(build_number.to_s)
 
-  upload_to_app_store(
-    api_key: api_key,
-    app_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
-    app_version: version,
-    build_number: build_number.to_s,
-    skip_binary_upload: true,
-    skip_metadata: true,
-    skip_screenshots: true,
-    submit_for_review: true,
-    automatic_release: true,
-    phased_release: false,
-    force: true,
-    precheck_include_in_app_purchases: false,
-  )
+  # Deliver applies releaseType/phased-release settings in its metadata step.
+  # Skipping that step silently ignores automatic_release/phased_release.
+  # An empty metadata directory preserves console text and reviewer details
+  # while still allowing Deliver to enforce the release settings.
+  Dir.mktmpdir("papyrd-release-metadata") do |metadata_path|
+    upload_to_app_store(
+      api_key: api_key,
+      app_identifier: ENV.fetch("IOS_BUNDLE_IDENTIFIER"),
+      app_version: version,
+      build_number: build_number.to_s,
+      skip_binary_upload: true,
+      skip_metadata: false,
+      metadata_path: metadata_path,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: true,
+      phased_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+    )
+  end
   UI.success("Submitted iOS #{version} (#{build_number}) for App Review; approval and public availability are not yet confirmed.")
 end
 

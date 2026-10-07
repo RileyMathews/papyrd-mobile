@@ -38,6 +38,11 @@ preserves console metadata/screenshots and uses `submit_for_review: true`,
 Apple accepted it, inspect App Review before retrying: an already submitted
 version may need no further action.
 
+Deliver's metadata step remains enabled with an empty temporary metadata
+directory: this applies automatic/full-release settings without uploading listing
+text or review credentials. `skip_metadata: true` would silently skip those
+release-setting updates as well.
+
 ## Enable production on release tags
 
 Only after a successful real submission with the CI API key, enable the repository
