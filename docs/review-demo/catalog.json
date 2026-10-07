@@ -1,0 +1,32 @@
+{
+  "metadata": {
+    "title": "Papyrd Review Demo",
+    "numberOfItems": 1
+  },
+  "links": [
+    {
+      "rel": "self",
+      "href": "https://raw.githubusercontent.com/RileyMathews/papyrd-mobile/main/docs/review-demo/catalog.json",
+      "type": "application/opds+json"
+    }
+  ],
+  "publications": [
+    {
+      "metadata": {
+        "title": "A Small Guide to Papyrd",
+        "identifier": "urn:papyrd:review-demo:1",
+        "author": [{ "name": "Papyrd contributors" }],
+        "language": "en",
+        "description": "An original, freely distributable sample book for testing browsing, downloads, offline reading, and reader preferences. Generated via opencode.",
+        "modified": "2026-10-06T00:00:00Z"
+      },
+      "links": [
+        {
+          "rel": "http://opds-spec.org/acquisition/open-access",
+          "href": "https://raw.githubusercontent.com/RileyMathews/papyrd-mobile/main/docs/review-demo/papyrd-demo.epub",
+          "type": "application/epub+zip"
+        }
+      ]
+    }
+  ]
+}

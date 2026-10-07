@@ -50,5 +50,6 @@ by GitHub under its own privacy policy. Do not post passwords, authentication
 keys, private server addresses, or personal information.
 
 For questions, contact the maintainer through the
-[Papyrd issue tracker](https://github.com/RileyMathews/papyrd-mobile/issues).
+[Papyrd issue tracker](https://github.com/RileyMathews/papyrd-mobile/issues)
+or email [dev@rileymathews.com](mailto:dev@rileymathews.com).
 Changes to this policy will be published here with an updated date.

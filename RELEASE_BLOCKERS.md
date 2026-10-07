@@ -116,15 +116,15 @@ draft version and latest uploaded build have different marketing versions.
 
 - [x] **1. Choose launch territories and resolve EU status if applicable.** Account Holder completed non-trader DSA declaration; Business reports Active. Launch in all regions except China mainland, which requires ICP/publication permits for Books apps. Availability includes EU regions.
 - [x] **2. Choose the first public marketing version.** `1.0.0` saved in the public draft and set as Expo's default; candidate workflow explicitly uses the same version. Existing `0.0.18` builds are not attached.
-- [ ] **3. Prepare reliable reviewer access.** Provide a working demo server with legally distributable books, credentials if needed, and clear setup instructions. Reviewers should not need to deploy their own server to evaluate core functionality.
-- [ ] **4. Provide a public privacy policy URL.** The App Privacy URL is unset. Ensure the policy accurately describes user-provided server connections and any developer/SDK data collection.
+- [ ] **3. Prepare reliable reviewer access.** Public static OPDS 2 demo catalog and original MIT-licensed sample EPUB prepared in `docs/review-demo/`; no credentials required. Still needs end-to-end testing on the iOS candidate before this item is complete. See `docs/review-demo/README.md`.
+- [x] **4. Provide a public privacy policy URL.** Saved publicly accessible `https://github.com/RileyMathews/papyrd-mobile/blob/main/docs/privacy-policy.md` in App Privacy; policy covers local storage, OPDS requests, optional KOSync and independent server operators. Also linked in app Settings.
 - [x] **5. Complete and publish App Privacy disclosures.** Published Data Not Collected after checking app dependencies/network behavior: no developer analytics/tracking SDKs; OPDS/KOSync requests go directly to user-selected services, not developer collection. See `docs/privacy-policy.md` for server-side caveats.
 - [x] **6. Select the primary app category.** Books; subtitle: Your self-hosted ebook reader.
 - [x] **7. Complete Content Rights Information.** Declared access to legally permitted third-party content. No hosted/bundled commercial library; reviewer/demo content must also be legally distributable.
 - [x] **8. Complete the age-rating questionnaire.** Calculated global 4+ with regional exceptions. No general web browser, social/UGC distribution, chat, ads, gambling, or app-provided mature content; personal server libraries are user-selected, not curated by Papyrd. Not Made for Kids.
 - [x] **9. Provide the app description.** Saved self-hosted OPDS library, offline reading, optional KOSync, free/open-source description; explains a compatible catalog is needed and no hosted library is provided.
 - [x] **10. Provide search keywords.** Saved ebook/EPUB/reader/OPDS/KOSync/self-hosted/offline/library keywords.
-- [ ] **11. Provide a public support URL.** Currently empty; provide a support page with a way to contact you.
+- [x] **11. Provide a public support URL.** Saved publicly accessible `https://github.com/RileyMathews/papyrd-mobile/blob/main/docs/support.md`; setup instructions and maintainer contact via GitHub issues/email. Also linked in app Settings.
 - [x] **12. Provide copyright information.** Saved `2026 Riley Mathews`.
 - [ ] **13. Upload iPhone screenshots.** Currently zero. The displayed 6.5-inch slot accepts portrait `1242 x 2688` or `1284 x 2778`, or their landscape equivalents.
 - [ ] **14. Upload iPad screenshots.** Required for the supported iPad device family; currently zero. The displayed 13-inch slot accepts portrait `2064 x 2752` or `2048 x 2732`, or their landscape equivalents.
