@@ -134,7 +134,24 @@ and candidate upload now both use `1.0.0`; older `0.0.18` builds are not candida
 - [x] **18. Configure country/region availability.** Public App Store distribution; all regions except China mainland selected. Future-region availability enabled. These are available on release, not live yet.
 - [x] **19. Upload and attach the matching release build.** CI uploaded `1.0.0 (1)` successfully in [run 37559426861](https://github.com/RileyMathews/papyrd-mobile/actions/runs/37559426861); processing completed and that exact build was attached to public version `1.0.0`. No missing-compliance prompt appeared. The build retains `ITSAppUsesNonExemptEncryption=false` for OS-provided HTTPS; no custom encryption was added.
 - [ ] **20. Implement and verify the production Fastlane lane.** Implemented exact-build `upload_to_app_store` submission with `submit_for_review: true`, `automatic_release: true`, and `phased_release: false`; local helper tests pass. Still requires a real CI submission to verify API-key permissions. See `docs/apple-release.md`.
-- [ ] **21. Run final submission validation and submit for App Review.** Resolve any additional requirements surfaced once the metadata and build are complete. Keep automatic release selected and confirm public availability after approval.
+- [ ] **21. Run final submission validation and submit for App Review.** After attaching `1.0.0 (1)`, Add for Review validation reports exactly two missing items: a 13-inch iPad screenshot and an iPhone Dynamic Island medium-display screenshot. Native demo verification is also still required before actual submission. No App Review item has been submitted; automatic release remains selected.
+
+### Next User Unblock
+
+Install **1.0.0 (1)** through the existing internal TestFlight groups and follow
+the public demo instructions in `docs/review-demo/README.md`. Confirm that adding
+the catalog, downloading the original sample EPUB, opening both chapters, and
+reopening the downloaded book offline work on iOS.
+
+Provide genuine app-in-use screenshots of the candidate, at least one each:
+
+- iPhone Dynamic Island medium display: portrait **1179 × 2556** or **1206 × 2622**.
+- iPad 13-inch display: portrait **2064 × 2752** or **2048 × 2732**.
+
+Their landscape equivalents are also accepted. Do not substitute resized Android
+screenshots. Once the native check and screenshots are ready, upload them, resume
+submission of the existing build (do not upload another one), verify the CI API
+key's submission permissions, and only then enable production release tags.
 
 ### Already Completed
 
