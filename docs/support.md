@@ -23,6 +23,7 @@ or filter your library and is not a dedicated children's service.
 ## Contact and troubleshooting
 
 [Open a support issue](https://github.com/RileyMathews/papyrd-mobile/issues/new)
+or email [dev@rileymathews.com](mailto:dev@rileymathews.com)
 to contact the maintainer, Riley Mathews. Include your app version, iOS/Android
 version, server software/version, the error message, and steps to reproduce.
 Check that your catalog endpoint is correct, your server is reachable from your
