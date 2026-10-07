@@ -98,8 +98,8 @@ production eligibility.
 | App Store app ID | `6763586382` |
 | Public version | `1.0.0`, Prepare for Submission |
 | App Review | No submitted items |
-| Latest TestFlight upload | `1.0.0 (1)`, uploaded successfully; Apple processing not yet verified complete |
-| Build attached to public version | None |
+| Latest TestFlight build | `1.0.0 (1)`, processed, Ready to Submit; internal groups Internal testers and Team (Expo) |
+| Build attached to public version | `1.0.0 (1)` |
 | Release setting | Automatically release this version |
 | Free Apps Agreement | Active, September 7, 2026 through April 23, 2027 |
 | Updated developer license warning | Resolved after Account Holder acceptance |
@@ -132,7 +132,7 @@ and candidate upload now both use `1.0.0`; older `0.0.18` builds are not candida
 - [x] **16. Fill App Review sign-in information and instructions.** Sign-in required unchecked because the static OPDS demo requires no credentials. Saved step-by-step setup, download, reading, and offline-test notes pointing to the public demo catalog; verified Notes persist after reload. Optional KOSync is disabled by default and not required for demo reading.
 - [x] **17. Set an explicit free price.** Set US base price to $0.00 and comparable free prices in all 175 regions. Paid Apps Agreement is not needed.
 - [x] **18. Configure country/region availability.** Public App Store distribution; all regions except China mainland selected. Future-region availability enabled. These are available on release, not live yet.
-- [ ] **19. Upload and attach the matching release build.** CI uploaded `1.0.0 (1)` successfully in [run 37559426861](https://github.com/RileyMathews/papyrd-mobile/actions/runs/37559426861); Apple showed Processing. Still needs completed processing, attachment, and any build-specific compliance checks. The build retains `ITSAppUsesNonExemptEncryption=false` for OS-provided HTTPS; no custom encryption was added.
+- [x] **19. Upload and attach the matching release build.** CI uploaded `1.0.0 (1)` successfully in [run 37559426861](https://github.com/RileyMathews/papyrd-mobile/actions/runs/37559426861); processing completed and that exact build was attached to public version `1.0.0`. No missing-compliance prompt appeared. The build retains `ITSAppUsesNonExemptEncryption=false` for OS-provided HTTPS; no custom encryption was added.
 - [ ] **20. Implement and verify the production Fastlane lane.** Implemented exact-build `upload_to_app_store` submission with `submit_for_review: true`, `automatic_release: true`, and `phased_release: false`; local helper tests pass. Still requires a real CI submission to verify API-key permissions. See `docs/apple-release.md`.
 - [ ] **21. Run final submission validation and submit for App Review.** Resolve any additional requirements surfaced once the metadata and build are complete. Keep automatic release selected and confirm public availability after approval.
 
