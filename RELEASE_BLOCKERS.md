@@ -1,6 +1,7 @@
 # Release Blockers
 
-Last verified in the store consoles: **September 7, 2026**.
+Apple setup last verified: **October 6, 2026**. Google statuses below remain
+from **September 7, 2026**; Google was not reinspected during the Apple setup.
 
 App identifier: `com.rileymathews.papyrd`.
 
@@ -95,41 +96,44 @@ production eligibility.
 | Item | Verified status |
 | --- | --- |
 | App Store app ID | `6763586382` |
-| Public version | `1.0`, Prepare for Submission |
+| Public version | `1.0.0`, Prepare for Submission |
 | App Review | No submitted items |
 | Latest TestFlight build | `0.0.18 (1)`, Testing, internal and external groups |
 | Build attached to public version | None |
 | Release setting | Automatically release this version |
 | Free Apps Agreement | Active, September 7, 2026 through April 23, 2027 |
 | Updated developer license warning | Resolved after Account Holder acceptance |
-| Pricing and availability | Not configured |
-| App Privacy disclosures | Not started |
+| Pricing and availability | Free; 174 regions selected (China mainland excluded for permits/ICP requirements) |
+| App Privacy disclosures | Published October 6, 2026: Data Not Collected |
+| DSA compliance | Active; Account Holder declared non-trader October 6, 2026 |
+| Primary category | Books |
+| Age rating | 4+ globally, with regional exceptions; not Made for Kids |
 
 TestFlight approval does not replace public App Store review. The existing public
 draft version and latest uploaded build have different marketing versions.
 
 ### Required Checklist, In Recommended Order
 
-- [ ] **1. Choose launch territories and resolve EU status if applicable.** For EU distribution, complete the Digital Services Act trader/non-trader declaration in Business and any required trader contact verification. A free app is not automatically a non-trader. Alternatively, exclude EU territories from the initial launch.
-- [ ] **2. Choose the first public marketing version.** For example, use `1.0.0` consistently in the build and public version record. Do not attach a `0.0.18` build to an incompatible `1.0` version record.
+- [x] **1. Choose launch territories and resolve EU status if applicable.** Account Holder completed non-trader DSA declaration; Business reports Active. Launch in all regions except China mainland, which requires ICP/publication permits for Books apps. Availability includes EU regions.
+- [x] **2. Choose the first public marketing version.** `1.0.0` saved in the public draft and set as Expo's default; candidate workflow explicitly uses the same version. Existing `0.0.18` builds are not attached.
 - [ ] **3. Prepare reliable reviewer access.** Provide a working demo server with legally distributable books, credentials if needed, and clear setup instructions. Reviewers should not need to deploy their own server to evaluate core functionality.
 - [ ] **4. Provide a public privacy policy URL.** The App Privacy URL is unset. Ensure the policy accurately describes user-provided server connections and any developer/SDK data collection.
-- [ ] **5. Complete and publish App Privacy disclosures.** The questionnaire remains at Get Started. Assess actual collection and third-party SDK behavior rather than assuming that free or self-hosted means no collection.
-- [ ] **6. Select the primary app category.** Currently unset; Books is a candidate.
-- [ ] **7. Complete Content Rights Information.** Account for third-party book access and rights to bundled or demo content.
-- [ ] **8. Complete the age-rating questionnaire.** Assess the app's content-access capabilities as well as its own interface.
-- [ ] **9. Provide the app description.** Currently empty.
-- [ ] **10. Provide search keywords.** Currently empty.
+- [x] **5. Complete and publish App Privacy disclosures.** Published Data Not Collected after checking app dependencies/network behavior: no developer analytics/tracking SDKs; OPDS/KOSync requests go directly to user-selected services, not developer collection. See `docs/privacy-policy.md` for server-side caveats.
+- [x] **6. Select the primary app category.** Books; subtitle: Your self-hosted ebook reader.
+- [x] **7. Complete Content Rights Information.** Declared access to legally permitted third-party content. No hosted/bundled commercial library; reviewer/demo content must also be legally distributable.
+- [x] **8. Complete the age-rating questionnaire.** Calculated global 4+ with regional exceptions. No general web browser, social/UGC distribution, chat, ads, gambling, or app-provided mature content; personal server libraries are user-selected, not curated by Papyrd. Not Made for Kids.
+- [x] **9. Provide the app description.** Saved self-hosted OPDS library, offline reading, optional KOSync, free/open-source description; explains a compatible catalog is needed and no hosted library is provided.
+- [x] **10. Provide search keywords.** Saved ebook/EPUB/reader/OPDS/KOSync/self-hosted/offline/library keywords.
 - [ ] **11. Provide a public support URL.** Currently empty; provide a support page with a way to contact you.
-- [ ] **12. Provide copyright information.** Currently empty; for example, `2026 Riley Mathews` if appropriate.
+- [x] **12. Provide copyright information.** Saved `2026 Riley Mathews`.
 - [ ] **13. Upload iPhone screenshots.** Currently zero. The displayed 6.5-inch slot accepts portrait `1242 x 2688` or `1284 x 2778`, or their landscape equivalents.
 - [ ] **14. Upload iPad screenshots.** Required for the supported iPad device family; currently zero. The displayed 13-inch slot accepts portrait `2064 x 2752` or `2048 x 2732`, or their landscape equivalents.
 - [ ] **15. Fill App Review contact information.** First name, last name, phone number, and email are empty.
 - [ ] **16. Fill App Review sign-in information and instructions.** Sign-in required is checked, but username/password and Notes are empty. Supply the reviewer access prepared above, or correct the sign-in requirement if it genuinely does not apply.
-- [ ] **17. Set an explicit free price.** Pricing currently shows Add Pricing with no starting price configured. A Paid Apps Agreement is not needed for this plan.
-- [ ] **18. Configure country/region availability.** The page currently shows Set Up Availability. Use the launch-territory decision from step 1 and public App Store distribution.
+- [x] **17. Set an explicit free price.** Set US base price to $0.00 and comparable free prices in all 175 regions. Paid Apps Agreement is not needed.
+- [x] **18. Configure country/region availability.** Public App Store distribution; all regions except China mainland selected. Future-region availability enabled. These are available on release, not live yet.
 - [ ] **19. Upload and attach the matching release build.** Wait for processing and resolve any build-specific compliance errors. Verify the existing non-exempt-encryption declaration remains accurate; separate documentation is only needed if the actual encryption usage requires it.
-- [ ] **20. Implement and verify the production Fastlane lane.** Use `upload_to_app_store` / `deliver` with `submit_for_review: true`, `automatic_release: true`, and `phased_release: false`. Select the exact marketing version and build produced by the run, and verify the API key's submission permissions.
+- [ ] **20. Implement and verify the production Fastlane lane.** Implemented exact-build `upload_to_app_store` submission with `submit_for_review: true`, `automatic_release: true`, and `phased_release: false`; local helper tests pass. Still requires a real CI submission to verify API-key permissions. See `docs/apple-release.md`.
 - [ ] **21. Run final submission validation and submit for App Review.** Resolve any additional requirements surfaced once the metadata and build are complete. Keep automatic release selected and confirm public availability after approval.
 
 ### Already Completed
@@ -161,12 +165,12 @@ draft version and latest uploaded build have different marketing versions.
 
 Apply these before enabling automatic production submission on release tags:
 
-- [ ] Validate release tags as store-compatible marketing versions. CI currently uses every pushed tag verbatim as `APP_VERSION`.
-- [ ] Serialize release submissions per platform to avoid build-number collisions and competing submissions.
-- [ ] Make Android version-code lookup failures fail safely instead of falling back to version code `1`.
+- [x] Validate release tags as store-compatible marketing versions. Numeric major.minor.patch only; validation runs before signing/build/upload, with regression tests.
+- [x] Serialize release submissions per platform to avoid build-number collisions and competing submissions. Per-platform concurrency groups; do not push several tags at once (GitHub pending runs are not a durable FIFO queue).
+- [x] Make Android version-code lookup failures fail safely instead of falling back to version code `1`. Track API errors now propagate; covered by regression test.
 - [ ] Make retries resume known uploads/submissions rather than blindly uploading another build.
-- [ ] Switch release-tag jobs to the verified production lanes. Current CI runs `android closed` and `ios internal`; the current iOS `production` lane also only uploads to TestFlight, and `submit_review` aborts.
-- [ ] Report uploaded, submitted, approved, and live as distinct states. Successful CI submission does not mean the app is already public.
+- [ ] Switch release-tag jobs to the verified production lanes. Android remains closed testing. iOS has production and exact-build submit lanes, but tags remain internal until repository variable `IOS_PRODUCTION_READY=true` is enabled after real submission verification.
+- [x] Report uploaded, submitted, approved, and live as distinct states. Lane logs and workflow summaries distinguish TestFlight upload/public submission; approval and live status require separate console checks.
 
 The target workflow is **release tag -> build -> upload -> submit for review ->
 automatic full release after approval**. Neither store's review can be bypassed.

@@ -4,7 +4,11 @@ const androidVersionCode = process.env.ANDROID_VERSION_CODE
   ? Number(process.env.ANDROID_VERSION_CODE)
   : undefined;
 const iosBuildNumber = process.env.IOS_BUILD_NUMBER;
-const appVersion = process.env.APP_VERSION || "0.0.1";
+const appVersion = process.env.APP_VERSION || "1.0.0";
+
+if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(appVersion) || appVersion.trim() !== appVersion) {
+  throw new Error("APP_VERSION must be a numeric major.minor.patch version (no v prefix or prerelease)");
+}
 
 if (androidVersionCode !== undefined && !Number.isInteger(androidVersionCode)) {
   throw new Error("ANDROID_VERSION_CODE must be an integer");

@@ -1,6 +1,20 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact iOS marketing version (major.minor.patch)
+        required: true
+        default: "1.0.0"
+      ios_lane:
+        description: Upload a candidate, release it, or resume submission of an existing build
+        type: choice
+        options: [internal, production, submit_review]
+        default: internal
+      build_number:
+        description: Exact existing build number (required for submit_review)
+        required: false
   push:
     tags:
       - "*"
@@ -9,13 +23,34 @@ permissions:
   contents: read
 
 env:
-  APP_VERSION: ${{ github.ref_name }}
+  APP_VERSION: ${{ inputs.version || github.ref_name }}
   CI: true
 
 jobs:
+  validate:
+    name: Validate release version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate store-compatible version
+        run: node scripts/validate-release-version.mjs "$APP_VERSION"
+      - name: Prevent blind upload retries
+        env:
+          IOS_LANE: ${{ inputs.ios_lane }}
+        run: |
+          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ] && [ "$IOS_LANE" != submit_review ]; then
+            echo "Refusing to re-upload on a retry. Inspect the original run/store, then resume the exact iOS build with submit_review."
+            exit 1
+          fi
+
   android-closed:
     name: Android Closed Testing
     runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push'
+    concurrency:
+      group: release-android
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
@@ -83,8 +118,12 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" "$apk_path#Papyrd-${asset_tag}.apk" --clobber
 
   ios-internal:
-    name: iOS Internal
+    name: iOS Release
     runs-on: macos-26
+    needs: validate
+    concurrency:
+      group: release-ios
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -115,7 +154,22 @@ jobs:
           xcodebuild -version
           xcodebuild -showsdks
 
-      - name: Deploy iOS internal release
+      - name: Deploy iOS release
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-        run: bundle exec fastlane ios internal
+          IOS_LANE: ${{ inputs.ios_lane || (vars.IOS_PRODUCTION_READY == 'true' && 'production' || 'internal') }}
+          EXISTING_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          case "$IOS_LANE" in
+            submit_review)
+              bundle exec fastlane ios submit_review "version:$APP_VERSION" "build_number:$EXISTING_BUILD_NUMBER"
+              ;;
+            production|internal)
+              bundle exec fastlane ios "$IOS_LANE"
+              ;;
+            *) exit 1 ;;
+          esac
+      - name: Explain release state
+        if: success()
+        run: |
+          echo 'Store upload/submission finished. App Review approval and live availability must be verified separately in App Store Connect.' >> "$GITHUB_STEP_SUMMARY"
