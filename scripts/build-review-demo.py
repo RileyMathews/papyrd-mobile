@@ -83,7 +83,11 @@ your own servers, and make the reading shelf your own.</p>
             if name.endswith((".xml", ".opf", ".xhtml")):
                 ElementTree.fromstring(contents)
             entry = zipfile.ZipInfo(name, date_time=(2026, 10, 6, 0, 0, 0))
-            entry.compress_type = zipfile.ZIP_STORED if name == "mimetype" else zipfile.ZIP_DEFLATED
+            # This tiny fixture uses stored entries so zlib versions cannot change
+            # its bytes between developer machines and CI. EPUB permits this.
+            entry.compress_type = zipfile.ZIP_STORED
+            entry.create_system = 3
+            entry.external_attr = 0o600 << 16
             archive.writestr(entry, contents.encode("utf-8"))
     return output.getvalue()
 
